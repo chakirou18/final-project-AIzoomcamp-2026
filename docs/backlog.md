@@ -1,10 +1,34 @@
 # Delivery backlog and proposed GitHub Issues
 
-Publication authorization, 2026-11-09: owner approved T01 documentation commit/push and duplicate-safe creation of T01–T15 Issues. Manager/technician identity separation, synthetic data, paused-loop incident and authenticated/audited recovery are decided. Historical approval warnings below remain phase gates for implementation/deployment, not a request to reconfirm this publication. No T02 implementation, deployment, paid provisioning or API purchase is authorized. Actual Issue URLs will be indexed here after creation; task IDs are never assumed to equal Issue numbers.
+Publication authorization, 2026-11-09: owner approved T01 documentation commit/push and duplicate-safe creation of T01–T15 Issues. Manager/technician identity separation, synthetic data, paused-loop incident and authenticated/audited recovery are decided. Historical approval warnings below remain phase gates for implementation/deployment, not a request to reconfirm this publication. No T02 implementation, deployment, paid provisioning or API purchase is authorized. Public Issue URLs are indexed below; task IDs are never assumed to equal Issue numbers.
 
-Revised estimate: **62 engineering hours of remaining planned work + 16 hours contingency = 78 hours**, with a planning range of **58–117 hours including contingency**. This supersedes the former 19.5-hour allocation/20-hour constraint. Already-spent T01 time is unmeasured and must be added separately to report total project effort; T01 below has zero estimated remaining execution hours after this correction, pending owner review. Maximum rubric coverage is the priority. Estimates are not completed time or promises. No remote Issues have been created. Titles below are proposed public Issue titles; create them only after owner authorization. Reference requirement IDs in [specification.md](specification.md).
+Revised estimate: **62 engineering hours of remaining planned work + 16 hours contingency = 78 hours**, with a planning range of **58–117 hours including contingency**. This supersedes the former 19.5-hour allocation/20-hour constraint. Already-spent T01 time is unmeasured and must be added separately to report total project effort; T01 below has zero estimated remaining execution hours after this correction, pending final review. Maximum rubric coverage is the priority. Estimates are not completed time or promises. All 15 reviewed Issues have been published and verified OPEN; none is automatically complete merely because it exists. Reference requirement IDs in [specification.md](specification.md).
 
 Audit history: [T01 review](t01-audit.md); current [readiness summary](t01-readiness.md); detailed local [Issue drafts](github-issue-drafts.md). The historical audit's 20-hour statements are superseded, not evidence of actual time. T01 remains in review; all other tasks remain proposed. Hours below are most-likely remaining estimates, excluding the separate contingency reserve.
+
+## Public Issue index
+
+Verified 2026-11-09: 15 unique OPEN Issues in the public repository, with exact draft titles/bodies, real dependency links and immutable published-document references. T01 remains open for acceptance review; T02–T15 have not started. GitHub numbering differs for T05/T06 because the worker dependency was published first.
+
+| Local task | Public Issue | State |
+| --- | --- | --- |
+| T01 | [#1](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/1) | OPEN — documentation published, acceptance review pending |
+| T02 | [#2](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/2) | OPEN — implementation not authorized |
+| T03 | [#3](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/3) | OPEN — not started |
+| T04 | [#4](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/4) | OPEN — not started |
+| T06 | [#5](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/5) | OPEN — not started |
+| T05 | [#6](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/6) | OPEN — not started |
+| T07 | [#7](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/7) | OPEN — not started |
+| T08 | [#8](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/8) | OPEN — not started |
+| T09 | [#9](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/9) | OPEN — not started |
+| T10 | [#10](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/10) | OPEN — not started |
+| T11 | [#11](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/11) | OPEN — not started |
+| T12 | [#12](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/12) | OPEN — not started |
+| T13 | [#13](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/13) | OPEN — not started |
+| T14 | [#14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14) | OPEN — not started |
+| T15 | [#15](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/15) | OPEN — not started |
+
+## Implementation plan
 
 | Phase / task | Proposed Issue title | Hours | Depends on | Measurable acceptance criteria | Expected reviewer evidence |
 | --- | --- | ---: | --- | --- | --- |

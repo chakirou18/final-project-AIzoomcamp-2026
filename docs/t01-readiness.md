@@ -35,3 +35,11 @@ Development and production may share hardware only with separate DB containers/u
 ## Validation status
 
 Final documentation checks and exact commands are recorded in the [audit addendum](t01-audit.md). They cover all tracked/untracked Markdown, local links, task ordering, Issue fields, requirements and estimate arithmetic. Runtime commands, workflows, trace tests and recovery demonstration remain **NOT RUN**.
+
+## Publication result — 2026-11-09
+
+Documentation commit [bd46434](https://github.com/chakirou18/final-project-AIzoomcamp-2026/commit/bd46434dc08cd0ccdf0dbaf3e375c9eb43ec77d3) was pushed to feature/t01-project-specification with the requested message. Ten Markdown files only were staged; no application/dependency files were present. Known credential-pattern scan and manual sensitive-content review found no credentials/customer data. git diff --cached --check passed after removing surplus blank lines at the audit file's end; all-document validation passed.
+
+GitHub CLI 2.102.0 was authenticated as the repository owner; the target repository is PUBLIC. Created and then fetched/verified 15 unique OPEN Issues: titles match draft headings, original draft bodies are preserved, and real dependency/document links are present. See the [public Issue index](backlog.md). No Issues were closed and no PR/main merge occurred. A documentation-only follow-up records these actual Issue URLs on the same branch.
+
+Transient publication-helper failures (saved-script extraction, empty-list/array handling and initial duplicated title separator) were corrected and validation rerun. No unresolved Git/GitHub operation failure remains at this checkpoint. The first issue-creation attempt stopped before any Issue was created; successful creation produced no duplicates. No deployment, installation, purchase or provisioning occurred. T02 still requires explicit implementation authorization; model/hosting choices are later gates and must respect the no-purchase restriction.
