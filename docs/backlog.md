@@ -1,6 +1,6 @@
 # Delivery backlog and proposed GitHub Issues
 
-Current task update: **T02 / [Issue #2](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/2) passed independent audit; feature-branch publication is authorized**, on feature/t02-foundation, with a PR targeting feature/t01-project-specification and an Issue progress comment. Evidence and acceptance status are in [T02 validation](t02-validation.md). Earlier authorization entries below record the T01 publication snapshot and are superseded by this update. T03+ remains unstarted; merge, Issue closure, deployment, spending and Docker volume deletion remain unauthorized.
+Current task update: **T03 / [Issue #3](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/3) passed independent audit; feature-branch publication is authorized**, with a PR from feature/t03-schema-contracts to feature/t02-foundation and an Issue progress comment. [T03 validation](t03-validation.md) records 112 passing tests. T02 PR #16 remains open/unmerged. Historical authorization/status snapshots below are superseded; no T04 implementation, merge, Issue closure, deployment, spending or Docker volume deletion is authorized.
 
 Publication authorization, 2026-11-09: owner approved T01 documentation commit/push and duplicate-safe creation of T01–T15 Issues. Manager/technician identity separation, synthetic data, paused-loop incident and authenticated/audited recovery are decided. Historical approval warnings below remain phase gates for implementation/deployment, not a request to reconfirm this publication. No T02 implementation, deployment, paid provisioning or API purchase is authorized. Public Issue URLs are indexed below; task IDs are never assumed to equal Issue numbers.
 
@@ -15,8 +15,8 @@ Verified 2026-11-09: 15 unique OPEN Issues in the public repository, with exact 
 | Local task | Public Issue | State |
 | --- | --- | --- |
 | T01 | [#1](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/1) | OPEN — documentation published, acceptance review pending |
-| T02 | [#2](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/2) | OPEN — audit PASS, feature-branch publication authorized, PR review pending |
-| T03 | [#3](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/3) | OPEN — not started |
+| T02 | [#2](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/2) | OPEN — published at 24bde69; PR #16 open/unmerged |
+| T03 | [#3](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/3) | OPEN - audit PASS; publication authorized; PR review pending |
 | T04 | [#4](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/4) | OPEN — not started |
 | T06 | [#5](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/5) | OPEN — not started |
 | T05 | [#6](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/6) | OPEN — not started |

@@ -21,6 +21,20 @@ class Settings(BaseSettings):
     db_password: SecretStr | None = None
     db_password_file: Path | None = None
     db_connect_timeout: int = Field(default=2, ge=1, le=10)
+    demo_mode: bool = False
+    session_secret: SecretStr | None = None
+    session_secret_file: Path | None = None
+    operator_secret: SecretStr | None = None
+
+    def signing_key(self) -> bytes:
+        if self.session_secret is not None and self.session_secret_file is not None:
+            raise ValueError("Configure one session signing key source")
+        value = self.session_secret.get_secret_value() if self.session_secret else None
+        if self.session_secret_file:
+            value = self.session_secret_file.read_text(encoding="utf-8").strip()
+        if value is None or len(value) < 32:
+            raise ValueError("Session signing key must contain at least 32 characters")
+        return value.encode()
 
     @model_validator(mode="after")
     def validate_password_source(self) -> "Settings":

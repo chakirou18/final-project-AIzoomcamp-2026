@@ -6,6 +6,10 @@ x-database-settings: &database-settings
   FIELDOPS_DB_NAME: ${POSTGRES_DB:-fieldops}
   FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
   FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+  FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:-local}
+  FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:-true}
+  FIELDOPS_SESSION_SECRET_FILE: /run/fieldops/session_key
+  FIELDOPS_OPERATOR_SECRET: ${FIELDOPS_OPERATOR_SECRET:-}
 
 x-app: &app
   image: fieldops-local:foundation

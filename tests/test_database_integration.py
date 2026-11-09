@@ -9,6 +9,7 @@ from sqlalchemy import inspect
 from fieldops.bootstrap import migrate, seed
 from fieldops.database import create_database_engine
 from fieldops.main import create_app
+from fieldops.models import Base
 from fieldops.settings import Settings
 
 pytestmark = pytest.mark.integration
@@ -32,13 +33,13 @@ def test_real_postgresql_readiness(settings):
         assert response.json() == {"status": "ready"}
 
 
-def test_migration_and_seed_entry_points_create_no_business_schema(settings):
+def test_migration_and_seed_entry_points_match_t03_schema(settings):
     migrate(settings)
     seed(settings)
     migrate(settings)
     seed(settings)
     engine = create_database_engine(settings)
     try:
-        assert set(inspect(engine).get_table_names()) == {"alembic_version"}
+        assert set(inspect(engine).get_table_names()) == {"alembic_version", *Base.metadata.tables}
     finally:
         engine.dispose()

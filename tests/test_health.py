@@ -67,3 +67,15 @@ def test_unknown_route_does_not_echo_query_string(client, capsys):
     response = client.get(f"/missing?token={sentinel}")
     assert response.status_code == 404
     assert sentinel not in response.text + capsys.readouterr().out
+
+
+def test_internal_model_validation_is_not_a_client_422(client):
+    from fieldops.schemas import InterventionCreate
+
+    @client.app.get("/qa/invalid-server-model")
+    def broken():
+        return InterventionCreate(title="", site="Synthetic")
+
+    response = client.get("/qa/invalid-server-model")
+    assert response.status_code == 500
+    assert response.json()["error"]["code"] == "internal_error"

@@ -1,10 +1,10 @@
 # Architecture
 
-Status: T02 foundation passed independent audit; feature-branch publication authorized and PR review pending. Broader architecture remains proposed. [Specification](specification.md) defines behavior; [backlog](backlog.md) defines delivery order.
+Status: T03 schema, persona/session boundaries and executable draft lifecycle contracts passed independent audit; feature-branch publication authorized, PR review pending. T02 commit 24bde69 and PR #16 remain unchanged; broader workflows/worker/operations are proposed. [Specification](specification.md) defines behavior; [backlog](backlog.md) defines order.
 
-T02 implementation note: only the FastAPI/PostgreSQL foundation described in [T02 validation](t02-validation.md) is implemented for review. Base Compose runs web and PostgreSQL, with two one-shot helpers from the same application image: local credential initialization and migration/seed bootstrap. No worker runs yet (T06), and no T03 business schema/personas are created. Alembic entry points have no business revisions; seed is an explicit idempotent no-op with a connectivity check. The broader architecture below remains a future plan. Current owner authorization supersedes earlier T01-only authorization text for local T02 work, not deployment/publication.
+T03 adds users, interventions, append-only intervention_history, notification_outbox, notifications and persona_sessions. Static revisions 0001_t03 and 0002_t03_review, database constraints and shared authorization scope helpers establish the persistence boundary. Bootstrap migrates and seeds four synthetic personas locally; nonlocal startup never seeds implicitly. Sessions are signed, database-revocable and capped at eight hours. Operator activation requires an environment secret. No business CRUD, worker, control or incident tables/routes exist yet. Future lifecycle OpenAPI is served separately and explicitly marked unimplemented; [contract details](t03-contracts.md) and [actual validation](t03-validation.md) distinguish executable foundation evidence from future behavior.
 
-Owner decisions (2026-11-09): separate manager/technician demo identities, synthetic data, paused-loop incident and authenticated/audited recovery are approved. Only T01 documentation/tracker publication is authorized now. Do not provision paid infrastructure or purchase API access; model/provider and hosting plans below require an available no-purchase option and later execution authorization.
+Current owner authorization covers one T03 feature-branch commit/push, a PR targeting feature/t02-foundation and an Issue #3 progress comment. Merge, Issue closure, T04 work, deployment, spending and volume deletion remain unauthorized. Earlier T01/T02 authorization statements in historical documents are superseded for current work.
 
 ## Component choices
 
@@ -16,7 +16,8 @@ Compose services: web, worker, PostgreSQL, on-call-agent, Prometheus, Alertmanag
 
 | Entity | Fields and constraints |
 | --- | --- |
-| users | UUID PK, display_name, role (dispatcher/technician/operator), active; seeded identities only. |
+| users | UUID PK, unique persona_key, display_name, role (dispatcher/technician/operator), active; seeded identities only. |
+| persona_sessions | SHA-256 digest of random signed cookie token PK, user_id FK, csrf_token, created_at, expires_at, revoked_at; eight-hour session lifetime. No cookie token/signing key stored in the table. |
 | interventions | UUID PK, title, description, site, priority enum, status enum, technician_id nullable FK users, assignment_version default 0, row_version, resolution nullable, created_at, updated_at, started_at, closed_at. Status consistency checked in service and database constraints. |
 | intervention_history | UUID PK, intervention_id FK, actor_id FK nullable for system, event_type, changed_fields JSON, created_at. No update/delete API. |
 | notification_outbox | UUID PK/event ID, intervention_id FK, recipient_id FK, assignment_version, event_type fixed to assignment, traceparent/tracestate nullable, created_at, status (pending/processing/delivered/failed), available_at, attempts, lease_until, lease_token, delivered_at, last_error. UNIQUE(intervention_id, assignment_version, event_type). |
