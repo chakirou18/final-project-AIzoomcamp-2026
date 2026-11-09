@@ -2,6 +2,8 @@
 
 Status: proposed T01 baseline, 2026-11-09. Requirement IDs are stable references for backlog tasks, tests and evidence. All acceptance criteria below are targets, not completed results.
 
+T03 implementation note: persistence, synthetic identities, session/CSRF infrastructure and draft lifecycle schemas exist locally; full F01 through F05/F10 workflows remain future T04 through T06 work. [T03 contracts](t03-contracts.md) records the implemented boundary and [validation](t03-validation.md) records actual evidence.
+
 ## Users, assumptions and boundaries
 
 Dispatchers manage jobs; technicians work assigned jobs; operators run the reliability demonstration. Assume one company per environment, distinct development/production deployments, fewer than 20 technicians and at most 1,000 interventions in each demonstration dataset. Use synthetic addresses and descriptions only. Seeded personas with signed sessions and server-side role checks replace account registration; this is a demonstration access model, not production identity management.

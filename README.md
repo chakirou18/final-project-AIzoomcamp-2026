@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T02 foundation passed independent review; feature-branch publication authorized, pending PR review.** FastAPI health endpoints, PostgreSQL, bootstrap entry points and foundation tests exist. Business features and later-task infrastructure remain planned. Repository: [chakirou18/final-project-AIzoomcamp-2026](https://github.com/chakirou18/final-project-AIzoomcamp-2026).
+**Status: T03 passed independent audit; feature-branch publication authorized, PR review pending. T02 PR #16 remains open/unmerged.** Database models, session boundaries and draft lifecycle contracts are implemented; business workflows remain planned.
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -10,7 +10,7 @@ Intended users are dispatchers who organize interventions, technicians who execu
 
 Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
 
-Current authorization: **T02 / [Issue #2](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/2) feature-branch publication**, on feature/t02-foundation, with a PR targeting feature/t01-project-specification and an Issue progress comment. Merge and Issue closure require later owner approval. No T03 business schema, worker, UI, auth, telemetry stack or CI/CD is implemented. See [actual T02 results](docs/t02-validation.md).
+Current authorization: **T03 / [Issue #3](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/3) feature-branch publication only**, with a PR from feature/t03-schema-contracts to feature/t02-foundation and an Issue progress comment. Merge, Issue closure, T04 implementation and deployment require separate authorization. See [T03 validation](docs/t03-validation.md) and [T02 evidence](docs/t02-validation.md).
 
 ## Capabilities and journeys
 
@@ -58,7 +58,7 @@ The proposed delivery policy is automatic PR validation, automatic development d
 
 ## Local startup and tests
 
-Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the schema-free Alembic/seed bootstrap, and waits for API readiness. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
+Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the T03 Alembic migration and idempotent synthetic persona seed, and waits for API readiness. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
 
 | Purpose | Command | Status |
 | --- | --- | --- |
@@ -73,6 +73,14 @@ API: [liveness](http://127.0.0.1:8000/health/live), [readiness](http://127.0.0.1
 
 This machine's Docker default address pools were exhausted. Compose uses a configurable private subnet (default 10.240.0.0/24) without pruning any unrelated networks. If it overlaps an existing Docker/VPN/network route, set FIELDOPS_SUBNET to a free CIDR in the ignored .env. FIELDOPS_PORT overrides localhost port 8000 if occupied.
 
-For Python-only unit tests, install/use Python 3.12 and uv, run `uv sync --frozen`, then `uv run pytest -m "not container and not integration"`. See T02 validation for the opt-in Docker lifecycle tests (real outage, restart and recreation persistence), lint commands and migration/seed entry points. The full planned demo's provider/operator credentials and business seed belong to later tasks; no model access is needed for T02.
+For Python-only unit tests, install/use Python 3.12 and uv, run `uv sync --frozen`, then `uv run pytest -m "not container and not integration"`. See T02 validation for the opt-in Docker lifecycle tests (real outage, restart and recreation persistence), lint commands and migration/seed entry points. No model access is needed for T03. Operator activation already requires a locally configured secret; workflow fixtures and provider access remain future tasks.
 
 Lifecycle tests remove only their generated containers/network; their named volumes and synthetic persistence probe remain for owner inspection. Repeated runs therefore retain additional test volumes. Do not delete them without owner authorization.
+
+## T03 sessions and contracts
+
+Local bootstrap creates four synthetic identities (dispatcher, two technicians, operator), without passwords or intervention fixtures. Manager means dispatcher. `/auth/personas` lists active nonoperator personas. GET `/auth/csrf`, keep its cookie and returned token, then POST `/auth/login` with persona_id and X-CSRF-Token. GET `/auth/session` or `/session` inspects the active identity. POST `/auth/logout` requires the session CSRF token and revokes the database session. HTML POST adapters are `/session/login` and `/session/logout`, using a csrf_token form field. These are session infrastructure, not the T05 application UI.
+
+Local Compose generates a separate session signing key in its credential volume. Optional FIELDOPS_OPERATOR_SECRET must be at least 32 characters to activate the operator; absent/weak/wrong secrets deny access. Never commit it. Nonlocal cookies require HTTPS; local HTTP is explicitly development-only. Nonlocal startup migrates without seeding; explicit `python -m fieldops.bootstrap seed --allow-nonlocal` is a separate operator action, not authorized for an actual production environment here. Demo activation is disabled by default outside the supplied local Compose configuration.
+
+Live `/docs` describes available routes. GET `/contracts/openapi.json` returns the **draft** lifecycle OpenAPI, with request examples and x-implemented=false; workflow routes are not registered. See [permission and API contracts](docs/t03-contracts.md). T04 will implement these operations. Existing T02 validation is historical; current schema/bootstrap tests intentionally expect T03 tables.

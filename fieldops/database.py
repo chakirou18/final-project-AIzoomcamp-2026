@@ -15,7 +15,7 @@ def create_database_engine(settings: Settings) -> Engine:
         hide_parameters=True,
         connect_args={
             "connect_timeout": settings.db_connect_timeout,
-            "options": "-c statement_timeout=2000",
+            "options": "-c statement_timeout=2000 -c timezone=UTC",
         },
     )
 

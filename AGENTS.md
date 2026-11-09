@@ -1,12 +1,12 @@
 # FieldOps repository instructions
 
-Current authorization: **T02 / GitHub Issue #2 only**, on feature/t02-foundation branched from local feature/t01-project-specification at 55c6c2e. Following the independent PASS audit, the owner authorized T02 validation, commit, non-force push, a PR targeting feature/t01-project-specification and a progress comment on Issue #2. T03+, merges, external infrastructure, spending, deployment, Issue closure and Docker volume deletion remain unauthorized. Stop after publication for owner review. Preserve existing changes and report actual test results in [T02 validation](docs/t02-validation.md).
+Current authorization: **T03 / GitHub Issue #3 feature-branch publication only**, on feature/t03-schema-contracts from feature/t02-foundation at 24bde696c26f3bf49b30306bcb7032926b82195a. Following the independent PASS audit, the owner authorized final checks, one T03 commit, non-force push, a PR targeting feature/t02-foundation and a progress comment on Issue #3. No merge, main modification, Issue closure, T04 implementation, deployment, spending or Docker volume deletion is authorized. Stop after publication for owner review. Record actual evidence in [T03 validation](docs/t03-validation.md).
 
 ## Scope and current state
 
-FieldOps is a single-company technical maintenance MVP prioritizing verifiable rubric coverage. The former 20-hour target is superseded by the T01 remaining-work estimate in the backlog (78 hours including contingency; uncertain range 58–117 hours, not actual time spent). Current phase is T02 foundation implementation/review. Implement only authorized tasks; do not create remote Issues, commit or push beyond the owner's current authorization. Preserve existing user files and inspect git status before editing. All project documentation is English.
+FieldOps is a single-company technical maintenance MVP prioritizing verifiable rubric coverage. The former 20-hour target is superseded by the T01 remaining-work estimate in the backlog (78 hours including contingency; uncertain range 58–117 hours, not actual time spent). Current phase is T03 schema/contracts implementation and review. Implement only authorized tasks; do not create remote Issues, commit or push beyond the owner's current authorization. Preserve existing user files and inspect git status before editing. All project documentation is English.
 
-Historical T01 publication authorization (2026-11-09): validate/publish T01 documentation on feature/t01-project-specification and create T01–T15 public Issues. Those actions are complete; current T02 permissions are defined at the top of this file. Approved product decisions remain separate manager (dispatcher)/technician demo identities, synthetic data, a controlled paused delivery loop and authenticated/audited allowlisted On-Call operations. Keep the supplied 24-point mapping and provisional 41-point flag separate.
+Historical T01 publication authorization (2026-11-09): validate/publish T01 documentation on feature/t01-project-specification and create T01–T15 public Issues. Those actions are complete; current permissions are defined at the top of this file. Approved product decisions remain separate manager (dispatcher)/technician demo identities, synthetic data, a controlled paused delivery loop and authenticated/audited allowlisted On-Call operations. Keep the supplied 24-point mapping and provisional 41-point flag separate.
 
 ## Context map
 
@@ -19,6 +19,7 @@ Historical T01 publication authorization (2026-11-09): validate/publish T01 docu
 - [T01 audit](docs/t01-audit.md): findings, validation and readiness gates.
 - [Issue drafts](docs/github-issue-drafts.md): reviewed bodies for the authorized public tracker publication.
 - [Final readiness](docs/t01-readiness.md): current T01 verdict and remaining decisions; supersedes historical audit estimates.
+- [T03 validation](docs/t03-validation.md): current schema, contracts, permissions and test handoff.
 - [T02 foundation validation](docs/t02-validation.md): runnable commands, actual results and review status for Issue #2.
 
 Read only the relevant modules after this file; use task summaries and linked evidence to restore context. Record assumptions and unresolved choices explicitly. Do not treat planned functionality or test commands as verified results. Update affected documents when contracts change.
@@ -40,7 +41,7 @@ The integration lead owns shared contracts and release review. Backend owns data
 
 T02 commands: `uv sync --frozen` (Python 3.12); `uv run pytest -m "not container and not integration"`; `docker compose config`; `docker compose up --build --wait`; `docker compose --profile test run --build --rm tests`. Opt-in container lifecycle tests need local Docker access and FIELDOPS_RUN_CONTAINER_TESTS=1; see validation notes for PowerShell/POSIX examples and disposable-project safeguards. No worker, persona schema or business tables belong to T02.
 
-Codex must read the public tracker and real dependency Issues before authorized implementation, reference its Issue URL/number in task summaries, report progress/validation evidence, and link any authorized commit/PR to the Issue. Follow [agent-team.md](docs/agent-team.md) for fields and closure rules. Close an Issue only when acceptance criteria have evidence and closure is authorized. T02 feature-branch publication and its Issue progress comment are authorized; merge and closure are not. Core/test commands are documented in README; future stack/browser commands remain proposed.
+Codex must read the public tracker and real dependency Issues before authorized implementation, reference its Issue URL/number in task summaries, report progress/validation evidence, and link any authorized commit/PR to the Issue. Follow [agent-team.md](docs/agent-team.md) for fields and closure rules. Close an Issue only when acceptance criteria have evidence and closure is authorized. T02 publication is historical and complete. Current T03 authorization permits its feature-branch publication and Issue progress comment only; do not repeat T02 publication or merge/close either task. Core/test commands are documented in README; future stack/browser commands remain proposed.
 
 ## Testing and safety rules
 

@@ -6,12 +6,16 @@ from contextlib import asynccontextmanager
 from time import perf_counter
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 
+from fieldops.auth import router as auth_router
+from fieldops.contracts import document_session_boundaries, lifecycle_openapi
 from fieldops.database import check_database, create_database_engine
 from fieldops.logging import configure_logging
+from fieldops.schemas import ErrorResponse
 from fieldops.settings import Settings
 
 logger = logging.getLogger("fieldops.http")
@@ -28,6 +32,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         current_settings = settings if settings is not None else Settings()
+        app.state.settings = current_settings
         configure_logging(current_settings.environment, current_settings.log_level)
         app.state.engine = create_database_engine(current_settings)
         logger.info("application_started")
@@ -37,7 +42,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             app.state.engine.dispose()
             logger.info("application_stopped")
 
-    app = FastAPI(title="FieldOps", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(
+        title="FieldOps",
+        version="0.1.0",
+        lifespan=lifespan,
+        responses={500: {"model": ErrorResponse}},
+    )
+    app.include_router(auth_router)
+    original_openapi = app.openapi
+
+    def documented_openapi():
+        return document_session_boundaries(original_openapi())
+
+    app.openapi = documented_openapi
+
+    @app.get("/contracts/openapi.json", tags=["contracts"])
+    def draft_contracts():
+        return lifecycle_openapi()
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_validation_error(request: Request, error):
+        # Never echo invalid values, secrets or Pydantic exception context.
+        fields = {}
+        for item in error.errors():
+            name = ".".join(str(part) for part in item["loc"])
+            fields.setdefault(name, []).append("Invalid value")
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "code": "validation_error",
+                    "message": "Invalid request fields",
+                    "fields": fields,
+                }
+            },
+        )
 
     @app.middleware("http")
     async def request_logging(request: Request, call_next: Callable):
@@ -45,6 +84,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         status_code = 500
         try:
             response = await call_next(request)
+            if request.url.path.startswith(("/auth/", "/session")):
+                response.headers["Cache-Control"] = "no-store"
+                response.headers["Vary"] = "Cookie"
             status_code = response.status_code
             return response
         finally:
@@ -62,7 +104,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.exception_handler(HTTPException)
     async def handle_http_error(request: Request, error: HTTPException):
         # Do not echo arbitrary exception detail, user input or query parameters.
-        return error_response("http_error", "Request could not be processed", error.status_code)
+        codes = {
+            "unauthenticated",
+            "forbidden",
+            "csrf_failed",
+            "not_found",
+            "validation_error",
+            "session_configuration_unavailable",
+        }
+        code = (
+            error.detail
+            if isinstance(error.detail, str) and error.detail in codes
+            else "http_error"
+        )
+        return error_response(code, "Request could not be processed", error.status_code)
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, error: Exception):
@@ -74,7 +129,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "alive"}
 
     @app.get(
-        "/health/ready", tags=["health"], responses={503: {"description": "Database unavailable"}}
+        "/health/ready",
+        tags=["health"],
+        responses={503: {"description": "Database unavailable", "model": ErrorResponse}},
     )
     def ready(request: Request):
         try:
