@@ -1,0 +1,122 @@
+name: fieldops
+
+x-database-settings: &database-settings
+  FIELDOPS_DB_HOST: db
+  FIELDOPS_DB_PORT: "5432"
+  FIELDOPS_DB_NAME: ${POSTGRES_DB:-fieldops}
+  FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
+  FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+
+x-app: &app
+  image: fieldops-local:foundation
+  build:
+    context: .
+    target: runtime
+  environment: *database-settings
+  volumes:
+    - db_credentials:/run/fieldops:ro
+
+services:
+  credentials:
+    <<: *app
+    user: "0:0"
+    command: ["python", "-m", "fieldops.bootstrap", "credentials"]
+    environment: {}
+    volumes:
+      - db_credentials:/run/fieldops
+    restart: "no"
+
+  db:
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fieldops}
+      POSTGRES_USER: ${POSTGRES_USER:-fieldops}
+      POSTGRES_PASSWORD_FILE: /run/fieldops/db_password
+    depends_on:
+      credentials:
+        condition: service_completed_successfully
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - db_credentials:/run/fieldops:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
+  bootstrap:
+    <<: *app
+    command: ["python", "-m", "fieldops.bootstrap", "all"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    <<: *app
+    ports:
+      - "127.0.0.1:${FIELDOPS_PORT:-8000}:8000"
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5)"
+      interval: 3s
+      timeout: 6s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    environment:
+      FIELDOPS_TEST_DATABASE: "1"
+      FIELDOPS_DB_HOST: test-db
+      FIELDOPS_DB_PORT: "5432"
+      FIELDOPS_DB_NAME: fieldops_test
+      FIELDOPS_DB_USER: fieldops_test
+      FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+    volumes:
+      - db_credentials:/run/fieldops:ro
+    depends_on:
+      test-db:
+        condition: service_healthy
+
+  test-db:
+    profiles: ["test"]
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
+    environment:
+      POSTGRES_DB: fieldops_test
+      POSTGRES_USER: fieldops_test
+      POSTGRES_PASSWORD_FILE: /run/fieldops/db_password
+    depends_on:
+      credentials:
+        condition: service_completed_successfully
+    volumes:
+      - db_credentials:/run/fieldops:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres_data:
+  db_credentials:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${FIELDOPS_SUBNET:-10.240.0.0/24}

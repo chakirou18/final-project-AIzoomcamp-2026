@@ -1,6 +1,8 @@
 # Architecture
 
-Status: proposed design, not implemented. [Specification](specification.md) defines behavior; [backlog](backlog.md) defines delivery order.
+Status: T02 foundation passed independent audit; feature-branch publication authorized and PR review pending. Broader architecture remains proposed. [Specification](specification.md) defines behavior; [backlog](backlog.md) defines delivery order.
+
+T02 implementation note: only the FastAPI/PostgreSQL foundation described in [T02 validation](t02-validation.md) is implemented for review. Base Compose runs web and PostgreSQL, with two one-shot helpers from the same application image: local credential initialization and migration/seed bootstrap. No worker runs yet (T06), and no T03 business schema/personas are created. Alembic entry points have no business revisions; seed is an explicit idempotent no-op with a connectivity check. The broader architecture below remains a future plan. Current owner authorization supersedes earlier T01-only authorization text for local T02 work, not deployment/publication.
 
 Owner decisions (2026-11-09): separate manager/technician demo identities, synthetic data, paused-loop incident and authenticated/audited recovery are approved. Only T01 documentation/tracker publication is authorized now. Do not provision paid infrastructure or purchase API access; model/provider and hosting plans below require an available no-purchase option and later execution authorization.
 
