@@ -8,13 +8,15 @@ from time import perf_counter
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError, TimeoutError
 from starlette.exceptions import HTTPException
 
 from fieldops.auth import router as auth_router
 from fieldops.contracts import document_session_boundaries, lifecycle_openapi
 from fieldops.database import check_database, create_database_engine
 from fieldops.logging import configure_logging
+from fieldops.policy import DomainError
+from fieldops.routes.interventions import router as intervention_router
 from fieldops.schemas import ErrorResponse
 from fieldops.settings import Settings
 
@@ -49,16 +51,52 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         responses={500: {"model": ErrorResponse}},
     )
     app.include_router(auth_router)
+    app.include_router(intervention_router)
     original_openapi = app.openapi
 
     def documented_openapi():
-        return document_session_boundaries(original_openapi())
+        schema = document_session_boundaries(original_openapi())
+        contracts = lifecycle_openapi()
+        for path, operations in schema["paths"].items():
+            for method, operation in operations.items():
+                contract = contracts["paths"].get(path, {}).get(method)
+                if contract:
+                    operation["description"] = contract["description"]
+        return schema
 
     app.openapi = documented_openapi
 
     @app.get("/contracts/openapi.json", tags=["contracts"])
     def draft_contracts():
-        return lifecycle_openapi()
+        schema = lifecycle_openapi()
+        schema["info"]["title"] = "FieldOps lifecycle contracts"
+        schema["x-implementation-status"] = "T04 lifecycle implemented; inbox deferred"
+        for path, operations in schema["paths"].items():
+            for operation in operations.values():
+                operation["x-implemented"] = not path.startswith("/api/v1/notifications")
+        schema["info"]["description"] = (
+            "Lifecycle routes implemented in T04; notifications remain contracts only."
+        )
+        return schema
+
+    @app.exception_handler(DomainError)
+    async def handle_domain_error(request: Request, error: DomainError):
+        return JSONResponse(
+            status_code=error.status_code,
+            content={
+                "error": {
+                    "code": error.code,
+                    "message": error.message,
+                    "fields": error.fields,
+                }
+            },
+        )
+
+    @app.exception_handler(OperationalError)
+    @app.exception_handler(TimeoutError)
+    async def handle_database_error(request: Request, error):
+        logger.warning("database_unavailable", extra={"error_type": type(error).__name__})
+        return error_response("database_unavailable", "Database operation unavailable", 503)
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(request: Request, error):
@@ -84,7 +122,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         status_code = 500
         try:
             response = await call_next(request)
-            if request.url.path.startswith(("/auth/", "/session")):
+            if request.url.path.startswith(("/auth/", "/session", "/api/")):
                 response.headers["Cache-Control"] = "no-store"
                 response.headers["Vary"] = "Cookie"
             status_code = response.status_code

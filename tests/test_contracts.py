@@ -94,7 +94,7 @@ def test_pagination_bounds(payload):
         Pagination.model_validate(payload)
 
 
-def test_openapi_has_versions_errors_security_and_no_live_workflows():
+def test_openapi_has_versions_errors_security_and_live_lifecycle():
     document = lifecycle_openapi()
     assert document["x-implementation-status"] == "contracts-only"
     create = document["paths"]["/api/v1/interventions"]["post"]
@@ -105,10 +105,20 @@ def test_openapi_has_versions_errors_security_and_no_live_workflows():
             assert {"401", "403", "404", "409", "422", "503"} <= operation["responses"].keys()
             if method in {"post", "patch"}:
                 assert operation["security"] == [{"PersonaSession": [], "CSRFToken": []}]
-    assert not any(
-        path.startswith("/api/v1/interventions") for path in create_app().openapi()["paths"]
-    )
+    live = create_app().openapi()["paths"]
+    for path, operations in document["paths"].items():
+        if path.startswith("/api/v1/notifications"):
+            assert path not in live
+            continue
+        for method, operation in operations.items():
+            actual = live[path][method]
+            assert actual["security"] == operation["security"]
+            assert actual["responses"].keys() == operation["responses"].keys()
+            assert actual["description"] == operation["description"]
     schemas = document["components"]["schemas"]
+    live_schemas = create_app().openapi()["components"]["schemas"]
+    for name in schemas.keys() & live_schemas.keys():
+        assert live_schemas[name] == schemas[name]
     assert "expected_version" in schemas["Assignment"]["required"]
     assert schemas["InterventionCreate"]["additionalProperties"] is False
     assert persona_id("demo-manager") != persona_id("demo-technician-a")

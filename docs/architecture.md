@@ -1,3 +1,5 @@
+> T04 audit update: versioned intervention routes now delegate to shared transaction-owning services. Mutations lock the job before version checks; history reads retain a shared job lock through authorization/count/page reads. Assignment history/outbox timestamps use one post-lock database clock sample. Inbox/worker/UI remain deferred. Current authorization covers T04 feature-branch publication only; historical authorization statements below are superseded. See [T04 evidence](t04-validation.md).
+
 # Architecture
 
 Status: T03 schema, persona/session boundaries and executable draft lifecycle contracts passed independent audit; feature-branch publication authorized, PR review pending. T02 commit 24bde69 and PR #16 remain unchanged; broader workflows/worker/operations are proposed. [Specification](specification.md) defines behavior; [backlog](backlog.md) defines order.

@@ -1,3 +1,5 @@
+> T04 local implementation update: intervention and technician-list contracts below now have live JSON handlers. Notification inbox/read contracts remain unimplemented. See [T04 validation](t04-validation.md). Historical T03 implementation-status claims below describe that baseline.
+
 # T03 schema, session and API contracts
 
 Task: [Issue #3](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/3); requirements F01–F05/F09/F10 and N01/N04/N06. T03 defines persistence and future workflow contracts. It implements session infrastructure only; no intervention CRUD, transition service, inbox delivery or worker endpoint exists.

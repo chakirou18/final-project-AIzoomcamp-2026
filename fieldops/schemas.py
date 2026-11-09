@@ -1,4 +1,4 @@
-"""Validated API contracts. Workflow handlers are deliberately absent until T04."""
+"""Validated versioned lifecycle contracts and deferred notification contracts."""
 
 from enum import StrEnum
 from typing import Annotated, Literal
