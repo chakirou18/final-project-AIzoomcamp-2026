@@ -202,6 +202,15 @@ def document_session_boundaries(schema: dict) -> dict:
     schemes["CSRFToken"] = {"type": "apiKey", "in": "header", "name": "X-CSRF-Token"}
     schemes["LoginCSRFCookie"] = {"type": "apiKey", "in": "cookie", "name": "fieldops_login_csrf"}
     paths = schema["paths"]
+    for path, operations in paths.items():
+        if path.startswith("/api/v1/"):
+            for method, operation in operations.items():
+                operation["security"] = (
+                    [{"PersonaSession": [], "CSRFToken": []}]
+                    if method in {"post", "patch"}
+                    else [{"PersonaSession": []}]
+                )
+                operation["x-implemented"] = True
     paths["/auth/login"]["post"]["security"] = [{"LoginCSRFCookie": [], "CSRFToken": []}]
     paths["/auth/logout"]["post"]["security"] = [{"PersonaSession": [], "CSRFToken": []}]
     for path in ["/session/login", "/session/logout"]:
