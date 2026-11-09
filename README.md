@@ -2,13 +2,15 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T01 — specification and architecture only.** No application, deployment, tests or operational evidence exists yet. Repository: [chakirou18/final-project-AIzoomcamp-2026](https://github.com/chakirou18/final-project-AIzoomcamp-2026).
+**Status: T02 foundation passed independent review; feature-branch publication authorized, pending PR review.** FastAPI health endpoints, PostgreSQL, bootstrap entry points and foundation tests exist. Business features and later-task infrastructure remain planned. Repository: [chakirou18/final-project-AIzoomcamp-2026](https://github.com/chakirou18/final-project-AIzoomcamp-2026).
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
 Intended users are dispatchers who organize interventions, technicians who execute assignments, and operators who investigate delivery delays. The MVP is a single-company demonstration using synthetic data and seeded identities.
 
-Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. Documentation and public Issue publication are authorized; application development, deployment, paid infrastructure and API purchases are not.
+Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
+
+Current authorization: **T02 / [Issue #2](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/2) feature-branch publication**, on feature/t02-foundation, with a PR targeting feature/t01-project-specification and an Issue progress comment. Merge and Issue closure require later owner approval. No T03 business schema, worker, UI, auth, telemetry stack or CI/CD is implemented. See [actual T02 results](docs/t02-validation.md).
 
 ## Capabilities and journeys
 
@@ -52,18 +54,25 @@ The proposed delivery policy is automatic PR validation, automatic development d
 - [Repository instructions](AGENTS.md): context, testing and review conventions.
 - [T01 audit](docs/t01-audit.md) and [local Issue drafts](docs/github-issue-drafts.md): readiness findings and implementation handoffs.
 - [Final T01 readiness](docs/t01-readiness.md): current decision and validation summary.
+- [T02 validation](docs/t02-validation.md): exact commands, acceptance evidence and known limitations.
 
-## Proposed single-command workflows
+## Local startup and tests
 
-These commands are **design proposals, not verified instructions**: no Compose files, images or test runners exist yet. Docker Compose is the intended prerequisite; implementation must verify first-run migrations, synthetic seed and service readiness inside the startup dependency graph.
+Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the schema-free Alembic/seed bootstrap, and waits for API readiness. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
 
-| Purpose | Proposed command |
-| --- | --- |
-| Application, worker and PostgreSQL | `docker compose up --build --wait` |
-| Complete required demo stack | `docker compose --profile observability --profile incident up --build --wait` |
-| Unit and PostgreSQL integration tests together | `docker compose --profile test run --build --rm tests` |
-| Browser tests | `docker compose --profile browser run --build --rm browser-tests` |
+| Purpose | Command | Status |
+| --- | --- | --- |
+| Foundation API + PostgreSQL + bootstrap | `docker compose up --build --wait` | Verified in T02; worker deferred to T06 |
+| Unit + real PostgreSQL integration tests | `docker compose --profile test run --build --rm tests` | Verified in T02; disposable test DB, no business fixtures |
+| Complete required demo stack | `docker compose --profile observability --profile incident up --build --wait` | Proposed; telemetry/agent profiles do not exist yet |
+| Browser tests | `docker compose --profile browser run --build --rm browser-tests` | Proposed; browser profile does not exist yet |
 
-Test profiles use disposable, separately named databases; the browser profile adds its own test web/worker pair. Neither uses the developer or production database. The complete demo requires configured model and operator credentials; tests use a labeled model stub. See the architecture for the proposed runner and profile contracts. No command above has been executed.
+API: [liveness](http://127.0.0.1:8000/health/live), [readiness](http://127.0.0.1:8000/health/ready), [OpenAPI UI](http://127.0.0.1:8000/docs). Only localhost port 8000 is published; PostgreSQL has no host port. Readiness returns 503 when its SELECT 1 fails, while liveness remains 200. Responses/logs never include passwords or connection strings. JSON application logs currently use null trace IDs; real tracing belongs to T09.
 
-Verified setup instructions, live URL and demo access details will be added only after implementation and validation. T01 publication covers these documents and the reviewed public tracker; later implementation, dependency installation and deployment require owner authorization.
+`docker compose restart db web` restarts the running services. `docker compose down` stops/removes this project's containers/network while retaining its database and credential volumes; restarting with up reuses them. Do not delete either volume unless intentionally resetting this local environment. A credential volume and its database volume must be kept together. Database/user defaults are local-development values, not production privilege design.
+
+This machine's Docker default address pools were exhausted. Compose uses a configurable private subnet (default 10.240.0.0/24) without pruning any unrelated networks. If it overlaps an existing Docker/VPN/network route, set FIELDOPS_SUBNET to a free CIDR in the ignored .env. FIELDOPS_PORT overrides localhost port 8000 if occupied.
+
+For Python-only unit tests, install/use Python 3.12 and uv, run `uv sync --frozen`, then `uv run pytest -m "not container and not integration"`. See T02 validation for the opt-in Docker lifecycle tests (real outage, restart and recreation persistence), lint commands and migration/seed entry points. The full planned demo's provider/operator credentials and business seed belong to later tasks; no model access is needed for T02.
+
+Lifecycle tests remove only their generated containers/network; their named volumes and synthetic persistence probe remain for owner inspection. Repeated runs therefore retain additional test volumes. Do not delete them without owner authorization.
