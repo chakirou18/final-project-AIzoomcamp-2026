@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}{{ 'Edit' if job else 'New' }} intervention{% endblock %}{% block content %}<a href="/app/interventions{% if job %}/{{ job.id }}{% endif %}" class="back-link">&larr; Back to {{ 'intervention' if job else 'work queue' }}</a>
+<p class="eyebrow mt-4">{{ 'UPDATE DETAILS' if job else 'PLAN NEW WORK' }}</p>
+<h1>{{ 'Edit intervention' if job else 'New intervention' }}</h1>
+<p class="text-secondary">Required fields are marked with *. Assignment sends a persistent notification.</p>
+<form method="post" action="/app/interventions/{{ (job.id|string) + '/edit' if job else 'new' }}" class="panel p-4 mt-4 form-panel" novalidate>
+<input type="hidden" name="csrf_token" value="{{ csrf }}">{% if job %}<input type="hidden" name="expected_version" value="{{ values.get('expected_version', job.row_version) }}">{% endif %}
+{% for name,label,limit in [('title','Title',160),('site','Site',250),('description','Description',4000)] %}<div class="mb-4">
+<label class="form-label" for="{{ name }}">{{ label }}{{ ' *' if name != 'description' else '' }}</label>{% if name == 'description' %}<textarea class="form-control" id="{{ name }}" name="{{ name }}" rows="5" maxlength="{{ limit }}" aria-describedby="{{ name }}-help {{ name }}-error" {% if errors.get(name) %}aria-invalid="true"{% endif %}>{{ values.get(name, '') }}</textarea>{% else %}<input class="form-control" id="{{ name }}" name="{{ name }}" value="{{ values.get(name, '') }}" maxlength="{{ limit }}" required aria-describedby="{{ name }}-help {{ name }}-error" {% if errors.get(name) %}aria-invalid="true"{% endif %}>{% endif %}
+<div class="form-text" id="{{ name }}-help">Maximum {{ limit }} characters.</div>
+<div class="text-danger small" id="{{ name }}-error">{{ errors.get(name, [])|join(' ') }}</div>
+</div>{% endfor %}
+<div class="row g-4 mb-4">
+<div class="col-md-6">
+<label class="form-label" for="priority">Priority *</label>
+<select class="form-select" name="priority" id="priority" aria-describedby="priority-error" {% if errors.get("priority") %}aria-invalid="true"{% endif %}>{% for priority in priorities %}<option value="{{ priority }}" {% if values.get('priority', 'medium') == priority %}selected{% endif %}>{{ priority|title }}</option>{% endfor %}
+</select><div class="text-danger small" id="priority-error">{{ errors.get("priority", [])|join(" ") }}</div>
+</div>{% if not job %}<div class="col-md-6">
+<label class="form-label" for="technician_id">Assign technician</label>
+<select class="form-select" name="technician_id" id="technician_id">
+<option value="">Assign later</option>{% for tech in technicians %}<option value="{{ tech.id }}" {% if values.get('technician_id')|string == tech.id|string %}selected{% endif %}>{{ tech.display_name }}</option>{% endfor %}
+</select>
+</div>{% endif %}
+</div>
+<div class="d-flex gap-3">
+<button class="btn btn-primary">{{ 'Save changes' if job else 'Create intervention' }}</button>
+<a class="btn btn-outline-secondary" href="/app/interventions{% if job %}/{{ job.id }}{% endif %}">Cancel</a>
+</div>
+</form>{% endblock %}

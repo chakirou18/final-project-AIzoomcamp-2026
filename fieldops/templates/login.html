@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block title %}Welcome{% endblock %}{% block content %}
+<div class="login-grid">
+<section>
+<p class="eyebrow">YOUR FIELD TEAM, CONNECTED</p>
+<h1 class="display-5 fw-bold">Keep good work<br>moving forward.</h1>
+<p class="lead text-secondary mt-4">Plan interventions, coordinate technicians and follow every assignment through to resolution.</p>
+<div class="intro-note">One shared workspace.<br>Clear ownership. A reliable history.</div>
+</section>
+<section class="panel p-4 p-md-5">
+<p class="eyebrow">LOCAL DEMONSTRATION</p>
+<h2 class="h3">Choose your workspace</h2>
+<p class="text-secondary">Select a synthetic identity to explore FieldOps. Anyone can select these personas; this is not production sign-in.</p>
+<form method="post" action="/app/login">
+<input type="hidden" name="csrf_token" value="{{ login_csrf }}">
+<label for="persona_id" class="form-label">Demo identity</label>
+<select class="form-select mb-4" name="persona_id" id="persona_id" required>{% for person in people %}<option value="{{ person.id }}">{{ person.display_name }} &middot; {{ 'Manager' if person.role == 'dispatcher' else 'Technician' }}</option>{% endfor %}
+</select>
+<button class="btn btn-primary w-100">Open workspace</button>
+</form>
+</section>
+</div>{% endblock %}

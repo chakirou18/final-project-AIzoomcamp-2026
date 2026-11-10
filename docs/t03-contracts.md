@@ -1,3 +1,5 @@
+> T05 update: `/app/` HTML forms now adapt the same T04/T06 services. Version checks, recipient scope, CSRF and transactions are unchanged; JSON contracts remain intact. See [T05 evidence](t05-validation.md).
+
 > T06 local implementation update: all published intervention, technician-list and JSON notification inbox/read contracts below now have handlers. The inbox is recipient-scoped, mark-read is idempotent, and historical ID/version summaries do not confer job access. HTML inbox UI remains unimplemented. See [T06 validation](t06-validation.md). Historical T03 implementation-status claims below describe that baseline.
 
 # T03 schema, session and API contracts

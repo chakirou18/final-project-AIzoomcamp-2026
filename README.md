@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T03 passed independent audit; feature-branch publication authorized, PR review pending. T02 PR #16 remains open/unmerged.** Database models, session boundaries and draft lifecycle contracts are implemented; business workflows remain planned.
+**Status: T05 web interface audited PASS on the published T06 baseline; feature-branch publication authorized, owner PR review pending. Earlier feature PRs remain unmerged.**
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -10,7 +10,7 @@ Intended users are dispatchers who organize interventions, technicians who execu
 
 Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
 
-Current authorization: **T03 / [Issue #3](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/3) feature-branch publication only**, with a PR from feature/t03-schema-contracts to feature/t02-foundation and an Issue progress comment. Merge, Issue closure, T04 implementation and deployment require separate authorization. See [T03 validation](docs/t03-validation.md) and [T02 evidence](docs/t02-validation.md).
+Current authorization: **T05 / [Issue #6](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/6) feature-branch publication only**: one commit, non-force push, PR against feature/t06-notification-worker and Issue progress comment. No merge, Issue closure, T07 or later implementation, deployment or spending is authorized. See [T05 validation](docs/t05-validation.md).
 
 ## Capabilities and journeys
 
@@ -57,6 +57,33 @@ The proposed delivery policy is automatic PR validation, automatic development d
 - [T02 validation](docs/t02-validation.md): exact commands, acceptance evidence and known limitations.
 
 ## Local startup and tests
+
+### Web workspace
+
+Open `http://localhost:8000/` after startup (the isolated T05 validation stack uses
+`http://127.0.0.1:18005/`). Select a synthetic manager or technician identity. This unrestricted
+persona selector is demo authentication, unsuitable for production.
+
+Managers can create, edit, assign/reassign, cancel, filter and inspect intervention history.
+Technicians see only their assigned work, start/complete it with a resolution, and read the
+persistent notification inbox. Historical assignment notifications do not grant job access.
+All forms work with JavaScript disabled. Bootstrap 5.3.8 and HTMX 2.0.8 are served locally;
+no CDN or frontend build is required at runtime.
+
+Browser validation is separate from the default database suite:
+
+```powershell
+uv sync --frozen
+uv run playwright install chromium
+# Start the local Compose stack first; use a distinct free subnet/port when needed.
+$env:FIELDOPS_BROWSER_URL='http://127.0.0.1:18005'
+uv run pytest browser_tests -v -s -p no:cacheprovider
+```
+
+Browser tests create retained synthetic interventions on the configured local application.
+Never point them at production. Screenshots and XML are ignored local artifacts.
+See [T05 validation](docs/t05-validation.md) for complete commands and actual results.
+
 
 Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the T03 Alembic migration and idempotent synthetic persona seed, and starts the API plus a separate leased outbox worker. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
 

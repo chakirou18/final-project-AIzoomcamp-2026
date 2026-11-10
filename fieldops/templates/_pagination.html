@@ -1,0 +1,5 @@
+<nav aria-label="Pagination" class="d-flex align-items-center justify-content-between gap-2 mt-4">
+<span class="small text-secondary">Page {{ page.page }} &middot; {{ page.total }} total</span>
+<div class="d-flex gap-2">{% if previous %}<a class="btn btn-sm btn-outline-secondary" href="{{ previous }}">Previous</a>{% endif %}{% if next %}<a class="btn btn-sm btn-outline-secondary" href="{{ next }}">Next</a>{% endif %}
+</div>
+</nav>
