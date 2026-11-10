@@ -58,22 +58,22 @@ The proposed delivery policy is automatic PR validation, automatic development d
 
 ## Local startup and tests
 
-Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the T03 Alembic migration and idempotent synthetic persona seed, and waits for API readiness. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
+Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the T03 Alembic migration and idempotent synthetic persona seed, and starts the API plus a separate leased outbox worker. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
 
 | Purpose | Command | Status |
 | --- | --- | --- |
-| Foundation API + PostgreSQL + bootstrap | `docker compose up --build --wait` | Verified in T02; worker deferred to T06 |
-| Unit + real PostgreSQL integration tests | `docker compose --profile test run --build --rm tests` | Verified in T02; disposable test DB, no business fixtures |
+| API + worker + PostgreSQL + bootstrap | `docker compose up --build --wait` | Implemented locally through T06; see T06 validation |
+| Unit + real PostgreSQL integration tests | `docker compose --profile test run --build --rm tests` | T02?T06 regressions; isolated synthetic test databases |
 | Complete required demo stack | `docker compose --profile observability --profile incident up --build --wait` | Proposed; telemetry/agent profiles do not exist yet |
 | Browser tests | `docker compose --profile browser run --build --rm browser-tests` | Proposed; browser profile does not exist yet |
 
 API: [liveness](http://127.0.0.1:8000/health/live), [readiness](http://127.0.0.1:8000/health/ready), [OpenAPI UI](http://127.0.0.1:8000/docs). Only localhost port 8000 is published; PostgreSQL has no host port. Readiness returns 503 when its SELECT 1 fails, while liveness remains 200. Responses/logs never include passwords or connection strings. JSON application logs currently use null trace IDs; real tracing belongs to T09.
 
-`docker compose restart db web` restarts the running services. `docker compose down` stops/removes this project's containers/network while retaining its database and credential volumes; restarting with up reuses them. Do not delete either volume unless intentionally resetting this local environment. A credential volume and its database volume must be kept together. Database/user defaults are local-development values, not production privilege design.
+`docker compose restart db web worker` restarts the running services. `docker compose down` stops/removes this project's containers/network while retaining its database and credential volumes; restarting with up reuses them. Do not delete either volume unless intentionally resetting this local environment. A credential volume and its database volume must be kept together. Database/user defaults are local-development values, not production privilege design.
 
 This machine's Docker default address pools were exhausted. Compose uses a configurable private subnet (default 10.240.0.0/24) without pruning any unrelated networks. If it overlaps an existing Docker/VPN/network route, set FIELDOPS_SUBNET to a free CIDR in the ignored .env. FIELDOPS_PORT overrides localhost port 8000 if occupied.
 
-For Python-only unit tests, install/use Python 3.12 and uv, run `uv sync --frozen`, then `uv run pytest -m "not container and not integration"`. See T02 validation for the opt-in Docker lifecycle tests (real outage, restart and recreation persistence), lint commands and migration/seed entry points. No model access is needed for T03. Operator activation already requires a locally configured secret; workflow fixtures and provider access remain future tasks.
+For Python-only unit tests, install/use Python 3.12 and uv, run `uv sync --frozen`, then `uv run pytest -m "not container and not integration"`. See T02 validation for the opt-in Docker lifecycle tests (real outage, restart and recreation persistence), lint commands and migration/seed entry points. No model access is needed through T06. Operator activation already requires a locally configured secret; workflow fixtures and provider access remain future tasks.
 
 Lifecycle tests remove only their generated containers/network; their named volumes and synthetic persistence probe remain for owner inspection. Repeated runs therefore retain additional test volumes. Do not delete them without owner authorization.
 
@@ -83,4 +83,12 @@ Local bootstrap creates four synthetic identities (dispatcher, two technicians, 
 
 Local Compose generates a separate session signing key in its credential volume. Optional FIELDOPS_OPERATOR_SECRET must be at least 32 characters to activate the operator; absent/weak/wrong secrets deny access. Never commit it. Nonlocal cookies require HTTPS; local HTTP is explicitly development-only. Nonlocal startup migrates without seeding; explicit `python -m fieldops.bootstrap seed --allow-nonlocal` is a separate operator action, not authorized for an actual production environment here. Demo activation is disabled by default outside the supplied local Compose configuration.
 
-Live `/docs` describes implemented versioned intervention routes. GET `/contracts/openapi.json` includes lifecycle request examples and marks implemented operations; notification inbox/read operations remain contracts only. See [permission and API contracts](docs/t03-contracts.md) and [T04 validation](docs/t04-validation.md) for endpoints, commands, evidence and limitations. T04 adds shared transactional services without changing T03 migrations. Browser workflows and notification delivery remain future tasks.
+Live `/docs` describes implemented versioned intervention routes. GET `/contracts/openapi.json` includes lifecycle request examples and marks implemented operations; the JSON notification inbox/read operations are also implemented. See [permission and API contracts](docs/t03-contracts.md) and [T04 validation](docs/t04-validation.md) for endpoints, commands, evidence and limitations. T04 adds shared transactional services without changing T03 migrations. The leased worker and persistent JSON inbox are implemented locally in T06; HTML workflows remain future T05 work.
+
+## T06 leased notification delivery
+
+`python -m fieldops.worker` runs a separate process using the existing application image. It polls every two seconds, claims at most 20 events with SKIP LOCKED, grants a unique 30-second lease token and consumes one of five attempts per committed claim. Delivery inserts the unique inbox row and marks the matching outbox event delivered in one transaction. Stale or expired tokens cannot complete. Failed delivery retries after 2/4/8/16 seconds; a fifth failure or fifth expired claim stays failed and undelivered. Database outages use bounded reconnect backoff.
+
+Authenticated technicians use GET `/api/v1/notifications` and POST `/api/v1/notifications/{id}/read` (session plus CSRF). Historical assignments retain an immutable ID/version summary but do not grant access to reassigned jobs. The worker has no exposed port, controls or HTTP health endpoint; process startup is not proof of inbox delivery. T07 controls/heartbeat, T09 tracing/exporters and alerting/agent work remain deferred.
+
+[Issue #5 implementation evidence](docs/t06-validation.md) records PostgreSQL concurrency/crash tests, Docker outage/restart checks, benchmark measurements and limitations. Never delete existing volumes to run tests.

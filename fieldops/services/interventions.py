@@ -24,6 +24,7 @@ from fieldops.schemas import (
     Status,
     Transition,
 )
+from fieldops.trace_context import TraceContext
 
 
 class InterventionService:
@@ -104,6 +105,7 @@ class InterventionService:
         technician_id: UUID,
         *,
         initial: bool = False,
+        context: TraceContext | None = None,
     ) -> None:
         if job.status not in {Status.open, Status.assigned}:
             raise DomainError(
@@ -112,6 +114,8 @@ class InterventionService:
         self.technician(db, technician_id)
         if job.technician_id == technician_id:
             return
+        # Services are also called outside HTTP; malformed optional carriers must not break writes.
+        context = TraceContext.parse(context.traceparent, context.tracestate) if context else None
         before = self.snapshot(job)
         if job.status == Status.open:
             check_transition(job.status, Status.assigned)
@@ -130,10 +134,14 @@ class InterventionService:
                 assignment_version=job.assignment_version,
                 created_at=assigned_at,
                 available_at=assigned_at,
+                traceparent=context.traceparent if context else None,
+                tracestate=context.tracestate if context else None,
             )
         )
 
-    def create(self, actor_id: UUID, payload: InterventionCreate) -> InterventionResponse:
+    def create(
+        self, actor_id: UUID, payload: InterventionCreate, context: TraceContext | None = None
+    ) -> InterventionResponse:
         with Session(self.engine, expire_on_commit=False) as db, db.begin():
             actor = self.actor(db, actor_id, "dispatcher")
             now = self.now(db)
@@ -152,7 +160,9 @@ class InterventionService:
             db.flush()
             self.history(db, job, actor, "created", {}, now)
             if payload.technician_id is not None:
-                self.assign_in_transaction(db, job, actor, payload.technician_id, initial=True)
+                self.assign_in_transaction(
+                    db, job, actor, payload.technician_id, initial=True, context=context
+                )
             db.flush()
             return InterventionResponse.model_validate(job)
 
@@ -185,12 +195,18 @@ class InterventionService:
             db.flush()
             return InterventionResponse.model_validate(job)
 
-    def assign(self, actor_id: UUID, identifier: UUID, payload: Assignment) -> InterventionResponse:
+    def assign(
+        self,
+        actor_id: UUID,
+        identifier: UUID,
+        payload: Assignment,
+        context: TraceContext | None = None,
+    ) -> InterventionResponse:
         with Session(self.engine, expire_on_commit=False) as db, db.begin():
             actor = self.actor(db, actor_id, "dispatcher")
             job = self.job(db, identifier, actor, lock=True)
             check_version(job.row_version, payload.expected_version)
-            self.assign_in_transaction(db, job, actor, payload.technician_id)
+            self.assign_in_transaction(db, job, actor, payload.technician_id, context=context)
             db.flush()
             return InterventionResponse.model_validate(job)
 

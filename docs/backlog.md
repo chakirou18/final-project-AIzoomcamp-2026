@@ -1,4 +1,4 @@
-> Current authorization: T04 feature-branch publication only on feature/t04-intervention-lifecycle, based on published T03 c4e83e3. The owner authorized one commit, non-force push, a PR targeting feature/t03-schema-contracts and a progress comment on Issue #4. No merge, Issue closure, later-task implementation, deployment, spending or volume deletion is authorized. [T04 validation](t04-validation.md) supersedes historical task-status snapshots below.
+> Current authorization (2026-11-10): T06 / [Issue #5](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/5) feature-branch publication only, based on published T04 f272f5c. The owner authorized one commit, non-force push, a PR targeting feature/t04-intervention-lifecycle and an Issue #5 progress comment. No merge, Issue closure, T05 or later implementation, deployment, spending or volume deletion is authorized. [T06 validation](t06-validation.md) supersedes historical task-status snapshots below.
 
 # Delivery backlog and proposed GitHub Issues
 

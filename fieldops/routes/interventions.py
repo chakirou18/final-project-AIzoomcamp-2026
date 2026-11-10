@@ -21,6 +21,7 @@ from fieldops.schemas import (
     Transition,
 )
 from fieldops.services.interventions import InterventionService
+from fieldops.trace_context import TraceContext
 
 router = APIRouter(
     prefix="/api/v1",
@@ -39,8 +40,12 @@ Service = Annotated[InterventionService, Depends(service)]
 
 
 @router.post("/interventions", status_code=201, response_model=InterventionResponse)
-def create(payload: InterventionCreate, actor: Writer, domain: Service):
-    return domain.create(actor.id, payload)
+def create(payload: InterventionCreate, actor: Writer, domain: Service, request: Request):
+    return domain.create(
+        actor.id,
+        payload,
+        TraceContext.parse(request.headers.get("traceparent"), request.headers.get("tracestate")),
+    )
 
 
 @router.get("/interventions", response_model=Page[InterventionResponse])
@@ -59,8 +64,13 @@ def edit(id: UUID, payload: InterventionEdit, actor: Writer, domain: Service):
 
 
 @router.post("/interventions/{id}/assignment", response_model=InterventionResponse)
-def assign(id: UUID, payload: Assignment, actor: Writer, domain: Service):
-    return domain.assign(actor.id, id, payload)
+def assign(id: UUID, payload: Assignment, actor: Writer, domain: Service, request: Request):
+    return domain.assign(
+        actor.id,
+        id,
+        payload,
+        TraceContext.parse(request.headers.get("traceparent"), request.headers.get("tracestate")),
+    )
 
 
 @router.post("/interventions/{id}/transitions", response_model=InterventionResponse)

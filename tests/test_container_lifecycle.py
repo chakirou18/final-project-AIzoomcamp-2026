@@ -1,5 +1,6 @@
 """Opt-in real Docker lifecycle test; all mutations target a unique disposable project."""
 
+import http.cookiejar
 import ipaddress
 import json
 import os
@@ -87,7 +88,7 @@ def isolated_stack(tmp_path_factory):
         {"target": 8000, "published": str(host_port), "host_ip": "127.0.0.1", "protocol": "tcp"}
     ]
     config["services"]["db"]["environment"].update(POSTGRES_USER="fieldops", POSTGRES_DB="fieldops")
-    for service in ("web", "bootstrap"):
+    for service in ("web", "bootstrap", "worker"):
         config["services"][service]["environment"].update(
             FIELDOPS_DB_USER="fieldops", FIELDOPS_DB_NAME="fieldops"
         )
@@ -192,9 +193,164 @@ def test_real_database_outage_and_recovery(isolated_stack):
         compose("start", "db")
         wait_for_ready(base_url)
     assert http_status(base_url, "/health/ready") == (200, {"status": "ready"})
-    logs = compose("logs", "--no-log-prefix", "web", "bootstrap", "credentials", "db")
+    logs = compose("logs", "--no-log-prefix", "web", "worker", "bootstrap", "credentials", "db")
     if secret in logs:
         pytest.fail("Generated credential leaked in service logs")
     for line in compose("logs", "--no-log-prefix", "web").splitlines():
         payload = json.loads(line)
         assert {"timestamp", "level", "service", "event"} <= payload.keys()
+
+
+def test_worker_network_delivery_benchmark_restart_and_outage(isolated_stack):
+    from fieldops.seed import persona_id
+
+    compose, base_url = isolated_stack
+    assert compose("exec", "-T", "worker", "id", "-u") == "10001"
+    # Previous regression intentionally caused an outage; reset only this test worker's backoff.
+    compose("restart", "worker")
+    jar = http.cookiejar.CookieJar()
+    sensitive = set()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+    def call(path, payload=None, csrf=None):
+        headers = {"Content-Type": "application/json"}
+        if csrf:
+            headers["X-CSRF-Token"] = csrf
+        request = urllib.request.Request(
+            base_url + path,
+            headers=headers,
+            data=json.dumps(payload).encode() if payload is not None else None,
+        )
+        with opener.open(request, timeout=8) as response:
+            return response.status, json.load(response)
+
+    def login(key):
+        _, data = call("/auth/csrf")
+        sensitive.add(data["csrf_token"])
+        sensitive.update(cookie.value for cookie in jar)
+        _, data = call("/auth/login", {"persona_id": str(persona_id(key))}, data["csrf_token"])
+        sensitive.add(data["csrf_token"])
+        sensitive.update(cookie.value for cookie in jar)
+        return data["csrf_token"]
+
+    def sql(statement):
+        return compose(
+            "exec", "-T", "db", "psql", "-U", "fieldops", "-d", "fieldops", "-Atc", statement
+        )
+
+    csrf = login("demo-manager")
+    ids = set()
+    request_started = {}
+    first_visible = {}
+    started = time.monotonic()
+    for index in range(20):
+        before_request = time.monotonic()
+        status, job = call(
+            "/api/v1/interventions",
+            {
+                "title": f"Synthetic timing {index}",
+                "site": "Demo",
+                "technician_id": str(persona_id("demo-technician-a")),
+            },
+            csrf,
+        )
+        assert status == 201
+        ids.add(job["id"])
+        request_started[job["id"]] = before_request
+    csrf = login("demo-technician-a")
+    while time.monotonic() - started < 10:
+        page = call("/api/v1/notifications?page_size=100")[1]
+        observed = time.monotonic()
+        for item in page["items"]:
+            if item["intervention_id"] in ids:
+                first_visible.setdefault(item["intervention_id"], observed)
+        if {item["intervention_id"] for item in page["items"]} >= ids:
+            break
+        time.sleep(0.05)
+    else:
+        pytest.fail("20 assignments not visible in recipient HTTP inbox within ten seconds")
+    all_visible_seconds = max(first_visible.values()) - started
+    per_assignment_seconds = [first_visible[id] - request_started[id] for id in ids]
+    assert len(first_visible) == len(ids) == 20
+    assert max(per_assignment_seconds) < 10 and all_visible_seconds < 10
+    latency = float(
+        sql(
+            "SELECT max(extract(epoch FROM n.delivered_at-o.created_at)) "
+            "FROM notifications n JOIN notification_outbox o ON o.id=n.outbox_id"
+        )
+    )
+    assert 0 <= latency < 10
+    print(
+        "T06_CONTAINER_BENCHMARK "
+        + json.dumps(
+            {
+                "count": 20,
+                "workers": 1,
+                "poll_seconds": 2,
+                "maximum_db_seconds": latency,
+                "observed_total_seconds": all_visible_seconds,
+                "maximum_http_observed_seconds": max(per_assignment_seconds),
+                "delivered_count": len(first_visible),
+            }
+        )
+    )
+    assert sql("SELECT count(*) FROM notifications") == "20"
+    compose("restart", "worker")
+    compose("up", "-d", "--no-deps", "--force-recreate", "worker")
+    assert {
+        item["intervention_id"] for item in call("/api/v1/notifications?page_size=100")[1]["items"]
+    } == ids
+    assert sql("SELECT count(*) FROM notifications") == "20"
+
+    # Restart the real worker while PostgreSQL is unavailable; it must stay alive and later recover.
+    compose("stop", "worker")
+    assert call("/api/v1/notifications?page_size=100")[1]["total"] == 20
+    csrf = login("demo-manager")
+    _, waiting = call(
+        "/api/v1/interventions",
+        {
+            "title": "Synthetic outage backlog",
+            "site": "Demo",
+            "technician_id": str(persona_id("demo-technician-a")),
+        },
+        csrf,
+    )
+    try:
+        compose("stop", "db")
+        # Compose start traverses dependencies on this CLI version, defeating the outage.
+        # Start exactly this generated container, never the database/bootstrap dependency chain.
+        docker("start", compose("ps", "--all", "-q", "worker"))
+        assert (
+            docker("inspect", "--format", "{{.State.Running}}", compose("ps", "--all", "-q", "db"))
+            == "false"
+        )
+        assert compose("ps", "--status", "running", "-q", "worker")
+        assert http_status(base_url, "/health/live")[0] == 200
+        assert http_status(base_url, "/health/ready")[0] == 503
+    finally:
+        compose("start", "db")
+        wait_for_ready(base_url)
+    csrf = login("demo-technician-a")
+    deadline = time.monotonic() + 40
+    while time.monotonic() < deadline:
+        page = call("/api/v1/notifications?page_size=100")[1]
+        if waiting["id"] in {item["intervention_id"] for item in page["items"]}:
+            break
+        time.sleep(0.1)
+    else:
+        pytest.fail("Worker failed to deliver persisted backlog after database recovery")
+    assert sql("SELECT count(*) FROM notifications") == "21"
+    assert sql("SELECT count(*) FROM notification_outbox WHERE status='delivered'") == "21"
+    # Recreate the DB too: persistent inbox is not a worker/container writable-layer artifact.
+    compose("up", "-d", "--force-recreate", "db")
+    wait_for_ready(base_url)
+    assert call("/api/v1/notifications?page_size=100")[1]["total"] == 21
+    assert sql("SELECT count(*) FROM notifications") == "21"
+    logs = compose("logs", "--no-log-prefix", "worker")
+    assert "worker_database_unavailable" in logs
+    for filename in ("db_password", "session_key"):
+        sensitive.add(compose("exec", "-T", "web", "cat", "/run/fieldops/" + filename))
+    logs = compose("logs", "--no-log-prefix", "web", "worker", "bootstrap", "credentials", "db")
+    body = json.dumps(call("/api/v1/notifications?page_size=100")[1])
+    if any(secret and secret in logs + body for secret in sensitive):
+        pytest.fail("Runtime key, signed cookie or CSRF value leaked in logs/business response")
