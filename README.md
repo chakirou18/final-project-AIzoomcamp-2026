@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T05 web interface audited PASS on the published T06 baseline; feature-branch publication authorized, owner PR review pending. Earlier feature PRs remain unmerged.**
+**Status: T07 operational dashboard, worker heartbeat and bounded pause/resume infrastructure audited locally on published T05; 392 distinct tests passed after isolated corrections. Feature-branch publication authorized; owner PR review pending. Earlier feature PRs remain unmerged.**
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -10,7 +10,7 @@ Intended users are dispatchers who organize interventions, technicians who execu
 
 Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
 
-Current authorization: **T05 / [Issue #6](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/6) feature-branch publication only**: one commit, non-force push, PR against feature/t06-notification-worker and Issue progress comment. No merge, Issue closure, T07 or later implementation, deployment or spending is authorized. See [T05 validation](docs/t05-validation.md).
+Current authorization: **T07 / [Issue #7](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/7) feature-branch publication only**: one commit, non-force push, PR against feature/t05-web-interface and Issue progress comment. No merge, Issue closure, T08 or later implementation, deployment or spending is authorized. See [T07 validation](docs/t07-validation.md).
 
 ## Capabilities and journeys
 
@@ -58,6 +58,33 @@ The proposed delivery policy is automatic PR validation, automatic development d
 
 ## Local startup and tests
 
+### Operational dashboard and controls (T07)
+
+At `/app/operator`, enter the separately generated **operator** credential to access `/app/dashboard`.
+For a local Compose demo, the owner can read it with
+`docker compose exec -T web cat /run/fieldops-controls/operator_key`; never paste its value into
+source, logs, screenshots or issue comments. The default stack supplies distinct operator and recovery
+credential files without a copied `.env`. They are stored in a separate volume not mounted by the
+notification worker. Outside Compose, configure distinct secrets or their readable file sources.
+
+Only the operator sees global status/queue counts, oldest undelivered age and the worker heartbeat.
+The controlled pause is demo-only, versioned, rate-limited and expires within ten minutes. Acknowledgment
+means active claim/delivery transactions have finished and the shared gate is closed; heartbeat continues.
+Running API readiness does not prove worker or delivery health.
+
+`GET /internal/worker/status` and `POST /internal/worker/resume` require the distinct recovery Bearer
+credential, not an operator session or webhook credential. Resume JSON contains only `incident_id`,
+`expected_generation` and `idempotency_key` UUIDs (generation is an integer). Reuse the exact same key/body
+for retries. Success and state commit atomically; changed key bindings or generations are rejected.
+The UUID incident is correlation metadata for future integration, not an implemented incident/agent workflow.
+Internal routes must remain private in a future deployment. No T09 telemetry, T10 alerts or T11 model agent
+is implemented. See the validation document for the local failure demonstration and limitations.
+
+PostgreSQL integration fixtures retain isolated databases for inspection. Repeated full runs can fill
+the test service's tmpfs; use a fresh Compose project name and an unused `FIELDOPS_SUBNET` for a new
+audit run. Keep prior projects/data for review. Do not delete application volumes to repair test capacity.
+
+
 ### Web workspace
 
 Open `http://localhost:8000/` after startup (the isolated T05 validation stack uses
@@ -85,7 +112,7 @@ Never point them at production. Screenshots and XML are ignored local artifacts.
 See [T05 validation](docs/t05-validation.md) for complete commands and actual results.
 
 
-Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the T03 Alembic migration and idempotent synthetic persona seed, and starts the API plus a separate leased outbox worker. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
+Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the Alembic migrations through T07 and idempotent synthetic persona seed, and starts the API plus a separate leased outbox worker. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
 
 | Purpose | Command | Status |
 | --- | --- | --- |

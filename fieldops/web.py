@@ -24,6 +24,7 @@ from fieldops.auth import (
     revoke,
     signed,
 )
+from fieldops.control_schemas import PauseRequest
 from fieldops.policy import DomainError
 from fieldops.schemas import (
     Assignment,
@@ -35,6 +36,8 @@ from fieldops.schemas import (
     Status,
     Transition,
 )
+from fieldops.seed import persona_id
+from fieldops.services.controls import ControlService
 from fieldops.services.interventions import InterventionService
 from fieldops.services.notifications import InboxService
 
@@ -91,12 +94,14 @@ async def fields(request):
 
 def payload(model, data):
     data = dict(data)
-    if "expected_version" in data:
+    for name in ("expected_version", "expected_generation", "duration_seconds"):
+        if name not in data:
+            continue
         # HTML controls submit strings; the shared contract still checks the integer range.
-        value = data["expected_version"]
+        value = data[name]
         if not value.isascii() or not value.isdecimal() or len(value) > 18:
             raise DomainError(422, "validation_error", "Invalid version; reload this page")
-        data["expected_version"] = int(value)
+        data[name] = int(value)
     if model is InterventionCreate and data.get("technician_id") == "":
         data.pop("technician_id")
     return model.model_validate(data)
@@ -320,3 +325,45 @@ async def read(identifier: UUID, request: Request, session: Identity):
         InboxService(request.app.state.engine).mark_read, session[1].id, identifier
     )
     return redirect("/app/inbox")
+
+
+@router.get("/operator")
+def operator_login_page(request: Request):
+    demo_enabled(request)
+    token = secrets.token_urlsafe(32)
+    response = render(request, "operator", login_csrf=token)
+    response.set_cookie(LOGIN_CSRF, signed(request, token), max_age=600, **cookie_options(request))
+    return response
+
+
+@router.post("/operator/login")
+async def operator_login(request: Request):
+    data = await fields(request)
+    csrf = data.pop("csrf_token", "")
+    if set(data) != {"operator_secret"}:
+        raise HTTPException(422, "validation_error")
+    command = LoginRequest(persona_id=persona_id("demo-operator"), **data)
+    response = redirect("/app/dashboard")
+    await run_in_threadpool(activate, request, response, command, csrf)
+    return response
+
+
+@router.get("/dashboard")
+def dashboard_page(request: Request, session: Identity):
+    data = ControlService(request.app.state.engine).dashboard(session[1].id)
+    return render(
+        request, "dashboard", session, data=data, demo_mode=request.app.state.settings.demo_mode
+    )
+
+
+@router.post("/worker/pause")
+async def pause_worker(request: Request, session: Identity):
+    demo_enabled(request)
+    data = await fields(request)
+    check_csrf(request, session[0].csrf_token, data.pop("csrf_token", ""))
+    try:
+        command = payload(PauseRequest, data)
+    except ValidationError:
+        raise HTTPException(422, "validation_error") from None
+    await run_in_threadpool(ControlService(request.app.state.engine).pause, session[1].id, command)
+    return redirect("/app/dashboard")

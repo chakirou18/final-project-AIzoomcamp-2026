@@ -9,7 +9,6 @@ x-database-settings: &database-settings
   FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:-local}
   FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:-true}
   FIELDOPS_SESSION_SECRET_FILE: /run/fieldops/session_key
-  FIELDOPS_OPERATOR_SECRET: ${FIELDOPS_OPERATOR_SECRET:-}
 
 x-app: &app
   image: fieldops-local:foundation
@@ -28,6 +27,7 @@ services:
     environment: {}
     volumes:
       - db_credentials:/run/fieldops
+      - control_credentials:/run/fieldops-controls
     restart: "no"
 
   db:
@@ -60,6 +60,13 @@ services:
 
   web:
     <<: *app
+    environment:
+      <<: *database-settings
+      FIELDOPS_OPERATOR_SECRET_FILE: /run/fieldops-controls/operator_key
+      FIELDOPS_RECOVERY_SECRET_FILE: /run/fieldops-controls/recovery_key
+    volumes:
+      - db_credentials:/run/fieldops:ro
+      - control_credentials:/run/fieldops-controls:ro
     ports:
       - "127.0.0.1:${FIELDOPS_PORT:-8000}:8000"
     depends_on:
@@ -134,6 +141,7 @@ services:
 volumes:
   postgres_data:
   db_credentials:
+  control_credentials:
 
 networks:
   default:

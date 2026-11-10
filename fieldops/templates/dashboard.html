@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Operations dashboard{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div><p class="eyebrow">OPERATIONS</p><h1>Operations dashboard</h1>
+    <p class="text-secondary">A database snapshot, not a live feed. Refresh before making operational decisions.</p>
+    <p class="small">Observed {{ data.observed_at.strftime('%d %b %Y - %H:%M:%S') }} UTC</p>
+  </div>
+  <a class="btn btn-outline-primary" href="/app/dashboard">Refresh dashboard</a>
+</div>
+<section aria-labelledby="work-heading">
+  <h2 id="work-heading" class="h5">Intervention overview</h2>
+  <div class="row g-3 mb-4">
+    {% for state, count in data.interventions.items() %}
+    <div class="col-6 col-lg"><div class="panel p-3 h-100"><h3 class="h6">{{ state|replace('_',' ')|title }}</h3><p class="h2 mb-0">{{ count }}</p></div></div>
+    {% endfor %}
+  </div>
+  <p>Unfinished: <strong>{{ data.unfinished }}</strong> &middot; Awaiting assignment: {{ data.pending_interventions }} &middot; Assigned: {{ data.assigned }}</p>
+</section>
+<div class="row g-4 mt-1">
+  <section class="col-lg-7" aria-labelledby="delivery-heading">
+    <div class="panel p-4 h-100">
+      <h2 id="delivery-heading" class="h5">Notification delivery</h2>
+      {% if data.delayed %}<p class="alert alert-warning" role="status">Delayed delivery: the oldest undelivered notification is over 60 seconds old.</p>{% endif %}
+      <dl class="row">
+        <dt class="col-7">Undelivered</dt><dd class="col-5" id="undelivered-count">{{ data.undelivered }}</dd>
+        <dt class="col-7">Oldest undelivered age</dt><dd class="col-5" id="oldest-age">{{ '%.1f'|format(data.oldest_undelivered_age_seconds) }} seconds</dd>
+        {% for state,count in data.notifications.items() %}<dt class="col-7">{{ state|title }}</dt><dd class="col-5">{{ count }}</dd>{% endfor %}
+      </dl>
+      <p class="small text-secondary">Pending, processing and failed events all count as undelivered. Failed events require human investigation; resume does not replay them.</p>
+    </div>
+  </section>
+  <section class="col-lg-5" aria-labelledby="worker-heading">
+    <div class="panel p-4 h-100">
+      <h2 id="worker-heading" class="h5">Notification worker</h2>
+      <p id="worker-state"><strong>{{ 'Paused' if data.worker.paused else 'Running gate' }}</strong> &middot; Generation {{ data.worker.generation }}</p>
+      <p>Heartbeat: <strong>{{ data.worker.heartbeat_state|title }}</strong> &middot; {{ data.worker.fresh_instances }} fresh instance(s)</p>
+      {% if data.worker.last_heartbeat %}<p class="small">Last heartbeat: {{ data.worker.last_heartbeat.strftime('%d %b %Y - %H:%M:%S') }} UTC<br>Instance {{ data.worker.last_instance_id }}</p>{% endif %}
+      {% if data.worker.heartbeat_state != 'fresh' %}<p class="alert alert-warning" role="status">No fresh worker heartbeat. A running gate does not prove a process is available. API readiness checks only PostgreSQL.</p>{% endif %}
+      {% if data.worker.paused %}<p>Pause effective at {{ data.worker.effective_at.strftime('%H:%M:%S') }} UTC; expires at {{ data.worker.expires_at.strftime('%H:%M:%S') }} UTC.</p><p class="small">A paused worker continues sending heartbeats. Pause is not a process failure.</p>{% endif %}
+      {% if data.worker.pause_expired %}<p class="alert alert-warning">Pause deadline passed. Waiting for database-backed worker reconciliation; this is not an agent recovery.</p>{% endif %}
+      {% if demo_mode and not data.worker.paused %}
+      <details><summary>Controlled demo pause</summary>
+        <p class="small mt-3">Stops new claims and delivery after active transactions finish. Automatically expires within ten minutes. Use only with an empty queue and synthetic assignments.</p>
+        <form method="post" action="/app/worker/pause">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}">
+          <input type="hidden" name="expected_generation" value="{{ data.worker.generation }}">
+          <button class="btn btn-outline-danger">Pause notification delivery</button>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

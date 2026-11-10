@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from fieldops.database import create_database_engine
 from fieldops.logging import configure_logging
 from fieldops.models import Notification, NotificationOutbox
+from fieldops.services.controls import gate, heartbeat
 from fieldops.settings import Settings
 from fieldops.trace_context import TraceContext
 
@@ -42,10 +43,13 @@ class LeaseLost(Exception):
 class OutboxWorker:
     def __init__(self, engine: Engine):
         self.engine = engine
+        self.instance_id = uuid4()
 
     def claim(self) -> list[Claim]:
         claims = []
         with Session(self.engine) as db, db.begin():
+            if gate(db).paused:
+                return []
             events = db.scalars(
                 select(NotificationOutbox)
                 .where(
@@ -88,6 +92,8 @@ class OutboxWorker:
     def deliver(self, claim: Claim) -> bool:
         try:
             with Session(self.engine) as db, db.begin():
+                if gate(db).paused:
+                    return False
                 event = db.scalar(
                     select(NotificationOutbox)
                     .where(NotificationOutbox.id == claim.event_id)
@@ -184,6 +190,7 @@ class OutboxWorker:
             return result.rowcount == 1
 
     def run_once(self, stop: Event | None = None) -> int:
+        heartbeat(self.engine, self.instance_id)
         delivered = 0
         for claim in self.claim():
             if stop is not None and stop.is_set():
