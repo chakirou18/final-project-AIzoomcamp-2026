@@ -77,6 +77,22 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  worker:
+    <<: *app
+    command: ["python", "-m", "fieldops.worker"]
+    environment:
+      FIELDOPS_DB_HOST: db
+      FIELDOPS_DB_PORT: "5432"
+      FIELDOPS_DB_NAME: ${POSTGRES_DB:-fieldops}
+      FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
+      FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:-local}
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    stop_grace_period: 10s
+    restart: unless-stopped
+
   tests:
     profiles: ["test"]
     build:

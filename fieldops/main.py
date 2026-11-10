@@ -17,6 +17,7 @@ from fieldops.database import check_database, create_database_engine
 from fieldops.logging import configure_logging
 from fieldops.policy import DomainError
 from fieldops.routes.interventions import router as intervention_router
+from fieldops.routes.notifications import router as notification_router
 from fieldops.schemas import ErrorResponse
 from fieldops.settings import Settings
 
@@ -52,6 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.include_router(auth_router)
     app.include_router(intervention_router)
+    app.include_router(notification_router)
     original_openapi = app.openapi
 
     def documented_openapi():
@@ -70,12 +72,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def draft_contracts():
         schema = lifecycle_openapi()
         schema["info"]["title"] = "FieldOps lifecycle contracts"
-        schema["x-implementation-status"] = "T04 lifecycle implemented; inbox deferred"
-        for path, operations in schema["paths"].items():
+        schema["x-implementation-status"] = "T04 lifecycle and T06 JSON inbox implemented"
+        for operations in schema["paths"].values():
             for operation in operations.values():
-                operation["x-implemented"] = not path.startswith("/api/v1/notifications")
+                operation["x-implemented"] = True
         schema["info"]["description"] = (
-            "Lifecycle routes implemented in T04; notifications remain contracts only."
+            "Lifecycle and JSON inbox routes implemented; HTML inbox UI remains deferred."
         )
         return schema
 

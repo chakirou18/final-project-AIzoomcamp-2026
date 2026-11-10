@@ -107,9 +107,6 @@ def test_openapi_has_versions_errors_security_and_live_lifecycle():
                 assert operation["security"] == [{"PersonaSession": [], "CSRFToken": []}]
     live = create_app().openapi()["paths"]
     for path, operations in document["paths"].items():
-        if path.startswith("/api/v1/notifications"):
-            assert path not in live
-            continue
         for method, operation in operations.items():
             actual = live[path][method]
             assert actual["security"] == operation["security"]

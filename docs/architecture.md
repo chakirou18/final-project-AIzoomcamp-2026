@@ -1,4 +1,4 @@
-> T04 audit update: versioned intervention routes now delegate to shared transaction-owning services. Mutations lock the job before version checks; history reads retain a shared job lock through authorization/count/page reads. Assignment history/outbox timestamps use one post-lock database clock sample. Inbox/worker/UI remain deferred. Current authorization covers T04 feature-branch publication only; historical authorization statements below are superseded. See [T04 evidence](t04-validation.md).
+> T06 local implementation update: a separate Python worker claims PostgreSQL outbox rows with SKIP LOCKED and 30-second fenced leases, consumes at most five attempts, and atomically materializes the unique persistent inbox row with delivery acknowledgement. JSON inbox/list/read routes now exist. T04 shared transactions/authorization remain intact. No UI, worker controls/heartbeat tables, observability stack, alerting or agent was added. Current authorization covers T06 feature-branch publication only; historical status/authorization statements below are superseded. See [T06 evidence](t06-validation.md).
 
 # Architecture
 

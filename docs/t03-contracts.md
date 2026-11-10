@@ -1,4 +1,4 @@
-> T04 local implementation update: intervention and technician-list contracts below now have live JSON handlers. Notification inbox/read contracts remain unimplemented. See [T04 validation](t04-validation.md). Historical T03 implementation-status claims below describe that baseline.
+> T06 local implementation update: all published intervention, technician-list and JSON notification inbox/read contracts below now have handlers. The inbox is recipient-scoped, mark-read is idempotent, and historical ID/version summaries do not confer job access. HTML inbox UI remains unimplemented. See [T06 validation](t06-validation.md). Historical T03 implementation-status claims below describe that baseline.
 
 # T03 schema, session and API contracts
 

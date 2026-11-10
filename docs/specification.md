@@ -2,7 +2,7 @@
 
 Status: proposed T01 baseline, 2026-11-09. Requirement IDs are stable references for backlog tasks, tests and evidence. All acceptance criteria below are targets, not completed results.
 
-T03 implementation note: persistence, synthetic identities, session/CSRF infrastructure and draft lifecycle schemas exist locally; full F01 through F05/F10 workflows remain future T04 through T06 work. [T03 contracts](t03-contracts.md) records the implemented boundary and [validation](t03-validation.md) records actual evidence.
+T06 local implementation note: T03 schema/sessions and T04 intervention services are published; a leased notification worker and recipient-scoped persistent JSON inbox now exist locally. HTML UI, worker controls, observability, alerting and the runtime agent remain future tasks. [T06 validation](t06-validation.md) records actual scope, commands, evidence and limitations; target requirements below are not blanket completion claims.
 
 ## Users, assumptions and boundaries
 
