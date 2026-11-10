@@ -62,6 +62,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["credentials", "migrate", "seed", "all"])
     parser.add_argument("--directory", type=Path, default=Path("/run/fieldops"))
+    parser.add_argument("--control-directory", type=Path, default=Path("/run/fieldops-controls"))
     parser.add_argument("--allow-nonlocal", action="store_true")
     arguments = parser.parse_args()
     configure_logging("local", "INFO", "fieldops-bootstrap")
@@ -69,6 +70,8 @@ def main() -> None:
         if arguments.action == "credentials":
             initialize_credentials(arguments.directory)
             initialize_credentials(arguments.directory, "session_key")
+            initialize_credentials(arguments.control_directory, "operator_key")
+            initialize_credentials(arguments.control_directory, "recovery_key")
         else:
             settings = Settings()
             configure_logging(settings.environment, settings.log_level, "fieldops-bootstrap")

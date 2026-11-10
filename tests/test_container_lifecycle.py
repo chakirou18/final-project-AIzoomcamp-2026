@@ -177,9 +177,34 @@ def test_container_startup_and_persistence_after_restart(isolated_stack):
 
 
 def test_real_database_outage_and_recovery(isolated_stack):
+    from fieldops.seed import persona_id
+
     compose, base_url = isolated_stack
     # Read only into memory: never print the generated secret in assertion output.
     secret = compose("exec", "-T", "web", "cat", "/run/fieldops/db_password")
+    operator_key = compose("exec", "-T", "web", "cat", "/run/fieldops-controls/operator_key")
+    recovery_key = compose("exec", "-T", "web", "cat", "/run/fieldops-controls/recovery_key")
+    worker_mounts = json.loads(docker("inspect", compose("ps", "-q", "worker")))[0]["Mounts"]
+    assert all(mount["Destination"] != "/run/fieldops-controls" for mount in worker_mounts)
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar())
+    )
+    with opener.open(base_url + "/auth/csrf", timeout=8) as response:
+        token = json.load(response)["csrf_token"]
+    request = urllib.request.Request(
+        base_url + "/auth/login",
+        data=json.dumps(
+            {
+                "persona_id": str(persona_id("demo-operator")),
+                "operator_secret": operator_key,
+            }
+        ).encode(),
+        headers={"Content-Type": "application/json", "X-CSRF-Token": token},
+    )
+    with opener.open(request, timeout=8) as response:
+        assert response.status == 200
+    with opener.open(base_url + "/app/dashboard", timeout=8) as response:
+        assert response.status == 200
     try:
         compose("stop", "db")
         assert http_status(base_url, "/health/live") == (200, {"status": "alive"})
@@ -189,16 +214,113 @@ def test_real_database_outage_and_recovery(isolated_stack):
         assert "postgresql" not in json.dumps(payload).lower()
         if secret in json.dumps(payload):
             pytest.fail("Generated credential leaked in readiness response")
+        with pytest.raises(urllib.error.HTTPError) as dashboard_error:
+            opener.open(base_url + "/app/dashboard", timeout=8)
+        assert dashboard_error.value.code == 503
+        page = dashboard_error.value.read().decode()
+        assert "Database unavailable" in page
+        internal_request = urllib.request.Request(
+            base_url + "/internal/worker/status",
+            headers={"Authorization": "Bearer " + recovery_key},
+        )
+        with pytest.raises(urllib.error.HTTPError) as state_error:
+            urllib.request.urlopen(internal_request, timeout=8)
+        assert state_error.value.code == 503
+        if any(value in page for value in (secret, operator_key, recovery_key)):
+            pytest.fail("Generated credential leaked in dashboard failure response")
     finally:
         compose("start", "db")
         wait_for_ready(base_url)
     assert http_status(base_url, "/health/ready") == (200, {"status": "ready"})
     logs = compose("logs", "--no-log-prefix", "web", "worker", "bootstrap", "credentials", "db")
-    if secret in logs:
+    if any(value in logs for value in (secret, operator_key, recovery_key)):
         pytest.fail("Generated credential leaked in service logs")
     for line in compose("logs", "--no-log-prefix", "web").splitlines():
         payload = json.loads(line)
         assert {"timestamp", "level", "service", "event"} <= payload.keys()
+
+
+def test_t07_pause_survives_database_outage_and_real_worker_death(isolated_stack):
+    from fieldops.seed import persona_id
+
+    compose, base_url = isolated_stack
+    operator_key = compose("exec", "-T", "web", "cat", "/run/fieldops-controls/operator_key")
+    recovery_key = compose("exec", "-T", "web", "cat", "/run/fieldops-controls/recovery_key")
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar())
+    )
+
+    def call(path, body=None, headers=None):
+        request = urllib.request.Request(
+            base_url + path,
+            data=json.dumps(body).encode() if body is not None else None,
+            headers={"Content-Type": "application/json", **(headers or {})},
+        )
+        with opener.open(request, timeout=8) as response:
+            assert response.status == 200
+            return json.load(response)
+
+    token = call("/auth/csrf")["csrf_token"]
+    session = call(
+        "/auth/login",
+        {"persona_id": str(persona_id("demo-operator")), "operator_secret": operator_key},
+        {"X-CSRF-Token": token},
+    )
+    internal = {"Authorization": "Bearer " + recovery_key}
+    initial = call("/internal/worker/status", headers=internal)
+    paused = call(
+        "/demo/worker/pause",
+        {"expected_generation": initial["generation"]},
+        {"X-CSRF-Token": session["csrf_token"]},
+    )
+    try:
+        compose("stop", "db")
+        assert http_status(base_url, "/health/ready")[0] == 503
+        compose("start", "db")
+        wait_for_ready(base_url)
+        recovered = call("/internal/worker/status", headers=internal)
+        assert recovered["paused"] and recovered["generation"] == paused["generation"]
+        assert recovered["expires_at"] == paused["expires_at"]
+        compose("stop", "worker")
+        # Real process stop and elapsed database time; never rewrite heartbeat timestamps.
+        deadline = time.monotonic() + 22
+        while time.monotonic() < deadline:
+            stale = call("/internal/worker/status", headers=internal)
+            if stale["heartbeat_state"] == "stale":
+                break
+            time.sleep(0.25)
+        assert stale["heartbeat_state"] == "stale" and stale["fresh_instances"] == 0
+        assert stale["paused"] and stale["generation"] == paused["generation"]
+        assert http_status(base_url, "/health/ready")[0] == 200
+        compose("start", "worker")
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline:
+            restarted = call("/internal/worker/status", headers=internal)
+            if restarted["heartbeat_state"] == "fresh":
+                break
+            time.sleep(0.25)
+        assert restarted["heartbeat_state"] == "fresh" and restarted["paused"]
+        assert restarted["last_instance_id"] != stale["last_instance_id"]
+        command = {
+            "incident_id": str(uuid.uuid4()),
+            "idempotency_key": str(uuid.uuid4()),
+            "expected_generation": paused["generation"],
+        }
+        assert call("/internal/worker/resume", command, internal)["success"]
+        print(
+            "T07_REAL_DEATH_OUTAGE "
+            + json.dumps(
+                {
+                    "generation": paused["generation"],
+                    "stale_last_heartbeat": stale["last_heartbeat"],
+                    "new_instance": restarted["last_instance_id"],
+                    "paused_after_outage": True,
+                }
+            )
+        )
+    finally:
+        compose("start", "db", "worker")
+        wait_for_ready(base_url)
 
 
 def test_worker_network_delivery_benchmark_restart_and_outage(isolated_stack):

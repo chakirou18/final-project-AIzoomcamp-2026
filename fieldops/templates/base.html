@@ -14,11 +14,11 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="topbar">
 <div class="container shell d-flex flex-wrap align-items-center gap-3 py-3">
-<a class="brand" href="/app/interventions">&#9638; FieldOps<span class="brand-dot">.</span>
+<a class="brand" href="{{ '/app/dashboard' if user and user.role == 'operator' else '/app/interventions' }}">&#9638; FieldOps<span class="brand-dot">.</span>
 </a>
 <span class="workspace">MAINTENANCE WORKSPACE</span>
 {% if user %}<nav aria-label="Primary" class="ms-md-auto d-flex gap-3" hx-boost="true">
-<a href="/app/interventions">{% if user.role == 'technician' %}My work{% else %}Interventions{% endif %}
+<a href="{{ '/app/dashboard' if user.role == 'operator' else '/app/interventions' }}">{% if user.role == 'operator' %}Dashboard{% elif user.role == 'technician' %}My work{% else %}Interventions{% endif %}
 </a>{% if user.role == 'technician' %}<a href="/app/inbox">Inbox</a>{% endif %}
 </nav>
 <div class="identity">{{ user.display_name }} <span class="small d-block">{{ 'Manager' if user.role == 'dispatcher' else user.role|title }}</span>

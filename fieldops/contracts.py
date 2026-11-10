@@ -213,6 +213,8 @@ def document_session_boundaries(schema: dict) -> dict:
                 operation["x-implemented"] = True
     paths["/auth/login"]["post"]["security"] = [{"LoginCSRFCookie": [], "CSRFToken": []}]
     paths["/auth/logout"]["post"]["security"] = [{"PersonaSession": [], "CSRFToken": []}]
+    if "/demo/worker/pause" in paths:
+        paths["/demo/worker/pause"]["post"]["security"] = [{"PersonaSession": [], "CSRFToken": []}]
     for path in ["/session/login", "/session/logout"]:
         operation = paths[path]["post"]
         properties = {

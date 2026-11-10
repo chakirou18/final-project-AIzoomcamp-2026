@@ -25,6 +25,32 @@ class Settings(BaseSettings):
     session_secret: SecretStr | None = None
     session_secret_file: Path | None = None
     operator_secret: SecretStr | None = None
+    operator_secret_file: Path | None = None
+    recovery_secret: SecretStr | None = None
+    recovery_secret_file: Path | None = None
+
+    @model_validator(mode="after")
+    def validate_control_credentials(self) -> "Settings":
+        for name in ("operator", "recovery"):
+            secret = getattr(self, name + "_secret")
+            path = getattr(self, name + "_secret_file")
+            if path:
+                if secret is not None:
+                    raise ValueError("Configure only one control credential source")
+                try:
+                    secret = SecretStr(path.read_text(encoding="utf-8").strip())
+                except OSError:
+                    raise ValueError("Control credential file is not readable") from None
+                setattr(self, name + "_secret", secret)
+            if name == "recovery" and secret is not None and len(secret.get_secret_value()) < 32:
+                raise ValueError("Recovery credential must contain at least 32 characters")
+        if (
+            self.operator_secret
+            and self.recovery_secret
+            and self.operator_secret.get_secret_value() == self.recovery_secret.get_secret_value()
+        ):
+            raise ValueError("Operator and recovery credentials must be distinct")
+        return self
 
     def signing_key(self) -> bytes:
         if self.session_secret is not None and self.session_secret_file is not None:

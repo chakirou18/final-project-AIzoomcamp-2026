@@ -229,3 +229,74 @@ class PersonaSession(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (CheckConstraint("expires_at > created_at", name="ck_session_expiry"),)
+
+
+class WorkerControl(Base):
+    __tablename__ = "worker_control"
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    paused: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    generation: Mapped[int] = mapped_column(Integer, server_default="0")
+    effective_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_pause_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = timestamp()
+    __table_args__ = (
+        CheckConstraint("key = 'notification-worker'", name="ck_control_singleton"),
+        CheckConstraint("generation >= 0", name="ck_control_generation"),
+        CheckConstraint(
+            "(paused AND generation > 0 AND effective_at IS NOT NULL AND expires_at IS NOT NULL "
+            "AND expires_at > effective_at AND expires_at <= effective_at + interval '10 minutes') "
+            "OR (NOT paused AND effective_at IS NULL AND expires_at IS NULL)",
+            name="ck_control_pause",
+        ),
+    )
+
+
+class WorkerHeartbeat(Base):
+    __tablename__ = "worker_heartbeats"
+    instance_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    started_at: Mapped[datetime] = timestamp()
+    last_seen: Mapped[datetime] = timestamp()
+    observed_generation: Mapped[int] = mapped_column(Integer)
+    observed_paused: Mapped[bool] = mapped_column(Boolean)
+    __table_args__ = (
+        CheckConstraint("observed_generation >= 0", name="ck_heartbeat_generation"),
+        Index("ix_heartbeat_last_seen", "last_seen"),
+    )
+
+
+class WorkerControlAudit(Base):
+    __tablename__ = "worker_control_audit"
+    id: Mapped[uuid.UUID] = identity()
+    event_type: Mapped[str] = mapped_column(String(30))
+    generation: Mapped[int] = mapped_column(Integer)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    principal: Mapped[str] = mapped_column(String(20))
+    outcome: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = timestamp()
+    __table_args__ = (
+        CheckConstraint("event_type IN ('pause','resume','auto_expired')", name="ck_control_event"),
+        CheckConstraint("generation >= 0", name="ck_audit_generation"),
+        CheckConstraint("principal IN ('operator','agent','system')", name="ck_control_principal"),
+    )
+
+
+class WorkerResumeAction(Base):
+    __tablename__ = "worker_resume_actions"
+    idempotency_key: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    incident_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    expected_generation: Mapped[int] = mapped_column(Integer)
+    generation: Mapped[int] = mapped_column(Integer)
+    outcome: Mapped[str] = mapped_column(String(40))
+    success: Mapped[bool] = mapped_column(Boolean)
+    recorded_at: Mapped[datetime] = timestamp()
+    __table_args__ = (
+        CheckConstraint(
+            "expected_generation >= 1 AND generation >= 0", name="ck_action_generation"
+        ),
+        CheckConstraint(
+            "(success AND outcome = 'resumed') OR "
+            "(NOT success AND outcome IN ('generation_mismatch','not_paused'))",
+            name="ck_action_outcome",
+        ),
+    )

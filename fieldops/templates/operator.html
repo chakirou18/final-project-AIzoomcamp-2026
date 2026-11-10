@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Operator access{% endblock %}
+{% block content %}
+<section class="panel p-4 form-panel">
+  <p class="eyebrow">RESTRICTED OPERATIONS WORKSPACE</p>
+  <h1>Operator access</h1>
+  <p>Use the separately configured local operator credential. Demo access is unsuitable for production authentication.</p>
+  <form method="post" action="/app/operator/login">
+    <input type="hidden" name="csrf_token" value="{{ login_csrf }}">
+    <label class="form-label" for="operator_secret">Operator credential</label>
+    <input class="form-control mb-4" type="password" id="operator_secret" name="operator_secret" autocomplete="current-password" required>
+    <button class="btn btn-primary">Open operations</button>
+  </form>
+</section>
+{% endblock %}
