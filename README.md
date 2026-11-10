@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T08 independent audit passed locally on published T07: 403 distinct tests passed, both isolated runners passed clean-source checks and N03 p95 was 59.38 ms. Feature-branch publication is owner-authorized; PR review remains pending. Earlier feature PRs remain unmerged.**
+**Status: T09 recovered and validated on unchanged published T08 (`fcc5bf7`, PR #22 open). Fresh validation passed 438 distinct tests, including all 13 observability cases, actual Grafana-to-Jaeger navigation and restored worker delivery. T09-only feature-branch publication is authorized after final staged review; earlier feature PRs remain unmerged.**
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -10,7 +10,7 @@ Intended users are dispatchers who organize interventions, technicians who execu
 
 Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
 
-Current authorization: **T08 / [Issue #8](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/8) feature-branch publication only**: one commit, non-force push, PR against T07 and Issue #8 progress comment. No merge, Issue closure, T09 or later work, deployment, purchase or application-volume deletion is authorized. See [T08 validation](docs/t08-validation.md).
+Current authorization: **T09 / [Issue #9](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/9) conditional feature-branch publication**. Fresh runtime, regression, security and source-recovery gates pass. Commit/push/PR/progress comment are authorized after final audited staging; PR targets `feature/t08-testing`, remains open/unmerged and Issue #9 remains open. No Docker Desktop restart, force-kill, database/volume deletion, global cleanup, T10/T11 implementation, public deployment or purchase. See [T09 validation](docs/t09-validation.md) and [recovery record](docs/t09-restart-readiness.md).
 
 ## Capabilities and journeys
 
@@ -58,6 +58,23 @@ The proposed delivery policy is automatic PR validation, automatic development d
 
 ## Local startup and tests
 
+### Local observability (T09)
+
+```sh
+docker compose --profile observability up --build --wait
+```
+
+This adds Prometheus, Grafana, Loki, Alloy, the OpenTelemetry Collector, Jaeger and a no-op Alertmanager to the real API/worker/PostgreSQL stack. Default local URLs are [Grafana](http://127.0.0.1:3000/d/fieldops-operations) and [Jaeger](http://127.0.0.1:16686); only loopback UI ports are published. Change `FIELDOPS_SUBNET`, `FIELDOPS_PORT`, `FIELDOPS_GRAFANA_PORT`, `FIELDOPS_JAEGER_PORT` and `COMPOSE_PROJECT_NAME` together when sharing a host. Keep those values consistent across commands.
+
+Grafana provisions thirteen real-data panels and bounded metric-to-log-to-trace links. The local anonymous role is Viewer, with Explore/transient inspection enabled; persistent dashboard writes remain denied. This is a local synthetic demo, not production authentication. The database-availability panel must be 1 before treating an empty backlog as healthy. Worker heartbeat freshness and pause state are separate signals. No T10 alert rules or T11 agent exists.
+
+Application tracing is enabled in the local Compose stack and exports asynchronously; `FIELDOPS_TELEMETRY_ENABLED=false` opts out when running only the core app. Exporter/collector failure does not block assignment or inbox commits. `/metrics` remains web-owned even when the worker stops. The future hosted proxy must keep metrics/internal APIs private. Logs exclude payloads, secrets and SQL values, and Alloy has no Docker socket. Metrics/Loki stream labels never contain user, event or trace IDs.
+
+Telemetry has separate volumes, 24-hour retention policies, bounded queues/log rotation and explicit CPU/memory caps. Retention is asynchronous, not a hard filesystem quota. Do not prune or delete application volumes to make space; on a small shared Docker host run expensive validation gates sequentially. See [T09 validation](docs/t09-validation.md) for actual component versions/digests, startup failures/corrections, trace JSON, tests, browser evidence and resource measurements.
+
+The future command `docker compose --profile observability --profile incident up --build --wait` is documented but **NOT TESTED as a complete stack** until T11 provides the real agent. An unused profile name does not prove agent startup.
+
+
 ### Operational dashboard and controls (T07)
 
 At `/app/operator`, enter the separately generated **operator** credential to access `/app/dashboard`.
@@ -77,8 +94,8 @@ credential, not an operator session or webhook credential. Resume JSON contains 
 `expected_generation` and `idempotency_key` UUIDs (generation is an integer). Reuse the exact same key/body
 for retries. Success and state commit atomically; changed key bindings or generations are rejected.
 The UUID incident is correlation metadata for future integration, not an implemented incident/agent workflow.
-Internal routes must remain private in a future deployment. No T09 telemetry, T10 alerts or T11 model agent
-is implemented. See the validation document for the local failure demonstration and limitations.
+Internal routes must remain private in a future deployment. T09 adds the telemetry profile described above;
+T10 alerts and the T11 model agent are not implemented. See the validation document for the local failure demonstration and limitations.
 
 T08 test infrastructure supersedes the earlier retained-database policy: only databases owned by the current test run are cleaned. Existing application and historical audit data are preserved.
 
@@ -127,12 +144,12 @@ Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docke
 
 | Purpose | Command | Status |
 | --- | --- | --- |
-| API + worker + PostgreSQL + bootstrap | `docker compose up --build --wait` | Implemented locally through T06; see T06 validation |
+| API + worker + PostgreSQL + bootstrap | `docker compose up --build --wait` | Existing domain/UI/control stack; see T04-T07 validation |
 | Unit + real PostgreSQL integration tests | `docker compose --profile test run --build --rm tests` | T02-T08 regressions; owned disposable test databases |
-| Complete required demo stack | `docker compose --profile observability --profile incident up --build --wait` | Proposed; telemetry/agent profiles do not exist yet |
+| Complete required demo stack | `docker compose --profile observability --profile incident up --build --wait` | Observability implemented in T09; real incident/agent profile remains NOT TESTED until T11 |
 | Browser tests | `docker compose --profile browser run --build --rm browser-tests` | T08 isolated Chromium suite + N03 benchmark |
 
-API: [liveness](http://127.0.0.1:8000/health/live), [readiness](http://127.0.0.1:8000/health/ready), [OpenAPI UI](http://127.0.0.1:8000/docs). Only localhost port 8000 is published; PostgreSQL has no host port. Readiness returns 503 when its SELECT 1 fails, while liveness remains 200. Responses/logs never include passwords or connection strings. JSON application logs currently use null trace IDs; real tracing belongs to T09.
+API: [liveness](http://127.0.0.1:8000/health/live), [readiness](http://127.0.0.1:8000/health/ready), [OpenAPI UI](http://127.0.0.1:8000/docs). The base stack publishes only localhost port 8000; PostgreSQL has no host port. The observability profile additionally publishes loopback Grafana/Jaeger UI ports. Readiness returns 503 when its SELECT 1 fails, while liveness remains 200. Responses/logs never include passwords or connection strings. JSON logs use active SDK trace/span IDs when T09 tracing is enabled, and null outside active spans.
 
 `docker compose restart db web worker` restarts the running services. `docker compose down` stops/removes this project's containers/network while retaining its database and credential volumes; restarting with up reuses them. Do not delete either volume unless intentionally resetting this local environment. A credential volume and its database volume must be kept together. Database/user defaults are local-development values, not production privilege design.
 
@@ -148,12 +165,12 @@ Local bootstrap creates four synthetic identities (dispatcher, two technicians, 
 
 Local Compose generates a separate session signing key in its credential volume. Optional FIELDOPS_OPERATOR_SECRET must be at least 32 characters to activate the operator; absent/weak/wrong secrets deny access. Never commit it. Nonlocal cookies require HTTPS; local HTTP is explicitly development-only. Nonlocal startup migrates without seeding; explicit `python -m fieldops.bootstrap seed --allow-nonlocal` is a separate operator action, not authorized for an actual production environment here. Demo activation is disabled by default outside the supplied local Compose configuration.
 
-Live `/docs` describes implemented versioned intervention routes. GET `/contracts/openapi.json` includes lifecycle request examples and marks implemented operations; the JSON notification inbox/read operations are also implemented. See [permission and API contracts](docs/t03-contracts.md) and [T04 validation](docs/t04-validation.md) for endpoints, commands, evidence and limitations. T04 adds shared transactional services without changing T03 migrations. The leased worker and persistent JSON inbox are implemented locally in T06; HTML workflows remain future T05 work.
+Live `/docs` describes implemented versioned intervention routes. GET `/contracts/openapi.json` includes lifecycle request examples and marks implemented operations; the JSON notification inbox/read operations are also implemented. See [permission and API contracts](docs/t03-contracts.md) and [T04 validation](docs/t04-validation.md) for endpoints, commands, evidence and limitations. T04 adds shared transactional services without changing T03 migrations. T06 implements the leased worker/persistent JSON inbox, and T05 provides the manager/technician HTML workflows at `/app/login`.
 
 ## T06 leased notification delivery
 
 `python -m fieldops.worker` runs a separate process using the existing application image. It polls every two seconds, claims at most 20 events with SKIP LOCKED, grants a unique 30-second lease token and consumes one of five attempts per committed claim. Delivery inserts the unique inbox row and marks the matching outbox event delivered in one transaction. Stale or expired tokens cannot complete. Failed delivery retries after 2/4/8/16 seconds; a fifth failure or fifth expired claim stays failed and undelivered. Database outages use bounded reconnect backoff.
 
-Authenticated technicians use GET `/api/v1/notifications` and POST `/api/v1/notifications/{id}/read` (session plus CSRF). Historical assignments retain an immutable ID/version summary but do not grant access to reassigned jobs. The worker has no exposed port, controls or HTTP health endpoint; process startup is not proof of inbox delivery. T07 controls/heartbeat, T09 tracing/exporters and alerting/agent work remain deferred.
+Authenticated technicians use GET `/api/v1/notifications` and POST `/api/v1/notifications/{id}/read` (session plus CSRF). Historical assignments retain an immutable ID/version summary but do not grant access to reassigned jobs. The worker has no exposed port or HTTP health endpoint; process startup is not proof of inbox delivery. T07 adds database-backed controls/heartbeat; T09 adds tracing/exporters and telemetry services. T10 alerting and T11 agent work remain deferred.
 
 [Issue #5 implementation evidence](docs/t06-validation.md) records PostgreSQL concurrency/crash tests, Docker outage/restart checks, benchmark measurements and limitations. Never delete existing volumes to run tests.

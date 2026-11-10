@@ -1,10 +1,11 @@
-"""Conservative trace carriers, without exporters or recording application data."""
+"""Bounded W3C carriers. Vendor state is restricted to opaque, non-user FieldOps values."""
 
 import re
 from dataclasses import dataclass
 
-PARENT = re.compile(r"00-([0-9a-f]{32})-([0-9a-f]{16})-(00|01)\Z")
-# Until T09 owns vendor propagation, accept only our opaque vendor entry. No baggage/free text.
+PARENT = re.compile(r"00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})\Z")
+# W3C flags may include random-trace-id/reserved bits; let the official propagator interpret them.
+# Retain only our opaque vendor entry, never baggage, credentials or arbitrary free-text state.
 STATE = re.compile(r"fieldops=[0-9a-f]{16,32}\Z")
 
 

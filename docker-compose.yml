@@ -1,5 +1,11 @@
 name: fieldops
 
+x-bounded-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: "5m"
+    max-file: "3"
+
 x-database-settings: &database-settings
   FIELDOPS_DB_HOST: db
   FIELDOPS_DB_PORT: "5432"
@@ -9,8 +15,12 @@ x-database-settings: &database-settings
   FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:-local}
   FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:-true}
   FIELDOPS_SESSION_SECRET_FILE: /run/fieldops/session_key
+  FIELDOPS_TELEMETRY_ENABLED: ${FIELDOPS_TELEMETRY_ENABLED:-true}
+  FIELDOPS_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+  FIELDOPS_LOG_DIRECTORY: /var/log/fieldops
 
 x-app: &app
+  logging: *bounded-logging
   image: fieldops-local:foundation
   build:
     context: .
@@ -28,6 +38,8 @@ services:
     volumes:
       - db_credentials:/run/fieldops
       - control_credentials:/run/fieldops-controls
+      - telemetry_logs:/var/log/fieldops
+      - jaeger_data:/var/lib/fieldops-jaeger
     restart: "no"
 
   db:
@@ -67,6 +79,7 @@ services:
     volumes:
       - db_credentials:/run/fieldops:ro
       - control_credentials:/run/fieldops-controls:ro
+      - telemetry_logs:/var/log/fieldops
     ports:
       - "127.0.0.1:${FIELDOPS_PORT:-8000}:8000"
     depends_on:
@@ -94,10 +107,193 @@ services:
       FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
       FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
       FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:-local}
+      FIELDOPS_TELEMETRY_ENABLED: ${FIELDOPS_TELEMETRY_ENABLED:-true}
+      FIELDOPS_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      FIELDOPS_LOG_DIRECTORY: /var/log/fieldops
+    volumes:
+      - db_credentials:/run/fieldops:ro
+      - telemetry_logs:/var/log/fieldops
     depends_on:
       bootstrap:
         condition: service_completed_successfully
     stop_grace_period: 10s
+    restart: unless-stopped
+
+  prometheus:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=24h", "--storage.tsdb.retention.size=256MB"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    mem_limit: 192m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:9090/-/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  alertmanager:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: prom/alertmanager:v0.35.0@sha256:e638797febd034838eca8b98cdbd46f951e9bf7f178777aa8669167406a9946c
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager", "--data.retention=24h", "--cluster.listen-address="]
+    volumes:
+      - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    mem_limit: 64m
+    cpus: 0.25
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:9093/-/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  loki:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: grafana/loki:3.7.9@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28
+    command: ["-config.file=/etc/loki/fieldops.yml"]
+    volumes:
+      - ./observability/loki.yml:/etc/loki/fieldops.yml:ro
+      - loki_data:/loki
+    environment:
+      GOMEMLIMIT: 180MiB
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:3100/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  alloy:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: grafana/alloy:v1.21.3@sha256:8ab871206bd2d8f89277f53abffee5f452a293980788d52f85fa183a87a505a4
+    command: [run, --disable-reporting, --server.http.listen-addr=0.0.0.0:12345, --storage.path=/var/lib/alloy, /etc/alloy/config.alloy]
+    volumes:
+      - ./observability/config.alloy:/etc/alloy/config.alloy:ro
+      - telemetry_logs:/var/log/fieldops:ro
+      - alloy_data:/var/lib/alloy
+    environment:
+      GOMEMLIMIT: 256MiB
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:12345/-/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  otel-collector:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: otel/opentelemetry-collector-contrib:0.165.0@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea
+    command: ["--config=/etc/otelcol/fieldops.yml"]
+    volumes:
+      - ./observability/collector.yml:/etc/otelcol/fieldops.yml:ro
+    environment:
+      GOMEMLIMIT: 256MiB
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:13133/]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  jaeger:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: jaegertracing/jaeger:2.23.0@sha256:3823829974ccfc2485d2e48b165579091f32295022ae80ca49704e2f4834116e
+    command: ["--config=/etc/jaeger/fieldops.yml"]
+    depends_on:
+      credentials:
+        condition: service_completed_successfully
+    volumes:
+      - ./observability/jaeger.yml:/etc/jaeger/fieldops.yml:ro
+      - jaeger_data:/data
+    ports:
+      - "127.0.0.1:${FIELDOPS_JAEGER_PORT:-16686}:16686"
+    environment:
+      GOMEMLIMIT: 256MiB
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:13133/status]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  grafana:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
+    volumes:
+      - ./observability/grafana/datasources.yml:/etc/grafana/provisioning/datasources/fieldops.yml:ro
+      - ./observability/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/fieldops.yml:ro
+      - ./observability/grafana/dashboard.json:/etc/grafana/dashboards/fieldops.json:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${FIELDOPS_GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Permits read-only Explore/transient inspection; Viewer still cannot save dashboards.
+      GF_USERS_VIEWERS_CAN_EDIT: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/fieldops.json
+      GOMEMLIMIT: 384MiB
+    mem_limit: 768m
+    cpus: 1.0
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:3000/api/health]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     restart: unless-stopped
 
   tests:
@@ -176,6 +372,13 @@ volumes:
   postgres_data:
   db_credentials:
   control_credentials:
+  telemetry_logs:
+  prometheus_data:
+  alertmanager_data:
+  loki_data:
+  alloy_data:
+  jaeger_data:
+  grafana_data:
 
 networks:
   test:

@@ -7,6 +7,7 @@ from datetime import timedelta
 from threading import Event
 from uuid import UUID, uuid4
 
+from opentelemetry.trace import SpanKind
 from sqlalchemy import Engine, and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -16,6 +17,7 @@ from fieldops.logging import configure_logging
 from fieldops.models import Notification, NotificationOutbox
 from fieldops.services.controls import gate, heartbeat
 from fieldops.settings import Settings
+from fieldops.telemetry import configure, log_event, remote_context, shutdown, span
 from fieldops.trace_context import TraceContext
 
 logger = logging.getLogger("fieldops.worker")
@@ -34,6 +36,7 @@ class Claim:
     event_id: UUID
     token: UUID
     context: TraceContext
+    attempt: int | None = None
 
 
 class LeaseLost(Exception):
@@ -85,11 +88,39 @@ class OutboxWorker:
                         event.id,
                         event.lease_token,
                         TraceContext.parse(event.traceparent, event.tracestate),
+                        event.attempts,
                     )
                 )
         return claims
 
     def deliver(self, claim: Claim) -> bool:
+        with span(
+            "notification.deliver",
+            context=remote_context(claim.context),
+            kind=SpanKind.CONSUMER,
+            attributes={
+                "fieldops.outbox_id": str(claim.event_id),
+                "fieldops.attempt": claim.attempt or 0,
+            },
+        ):
+            if claim.context.traceparent is None:
+                log_event(
+                    logger, "trace_context_invalid", outbox_id=claim.event_id, attempt=claim.attempt
+                )
+            try:
+                with span("notification.inbox.persist"):
+                    result = self._deliver(claim)
+                return result
+            except Exception:
+                log_event(
+                    logger,
+                    "notification_delivery_failed",
+                    outbox_id=claim.event_id,
+                    attempt=claim.attempt,
+                )
+                raise
+
+    def _deliver(self, claim: Claim) -> bool:
         try:
             with Session(self.engine) as db, db.begin():
                 if gate(db).paused:
@@ -150,6 +181,15 @@ class OutboxWorker:
                 )
                 if result.rowcount != 1:
                     raise LeaseLost
+                notification_id = notification.id
+                attempt = event.attempts
+            log_event(
+                logger,
+                "notification_delivered",
+                outbox_id=claim.event_id,
+                notification_id=notification_id,
+                attempt=attempt,
+            )
             return True
         except LeaseLost:
             return False
@@ -223,7 +263,13 @@ class OutboxWorker:
 
 def main():
     settings = Settings()
-    configure_logging(settings.environment, settings.log_level, service="fieldops-worker")
+    configure_logging(
+        settings.environment,
+        settings.log_level,
+        service="fieldops-worker",
+        directory=settings.log_directory,
+    )
+    provider = configure(settings, "fieldops-worker")
     stop = Event()
     for name in (signal.SIGTERM, signal.SIGINT):
         signal.signal(name, lambda *_: stop.set())
@@ -234,6 +280,7 @@ def main():
     finally:
         engine.dispose()
         logger.info("worker_stopped")
+        shutdown(provider)
 
 
 if __name__ == "__main__":

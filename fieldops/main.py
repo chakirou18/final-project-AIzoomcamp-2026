@@ -8,8 +8,9 @@ from time import perf_counter
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
+from opentelemetry.trace import SpanKind, StatusCode
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, TimeoutError
 from starlette.exceptions import HTTPException
 
@@ -17,12 +18,15 @@ from fieldops.auth import router as auth_router
 from fieldops.contracts import document_session_boundaries, lifecycle_openapi
 from fieldops.database import check_database, create_database_engine
 from fieldops.logging import configure_logging
+from fieldops.metrics import Metrics
 from fieldops.policy import DomainError
 from fieldops.routes.controls import router as control_router
 from fieldops.routes.interventions import router as intervention_router
 from fieldops.routes.notifications import router as notification_router
 from fieldops.schemas import ErrorResponse
 from fieldops.settings import Settings
+from fieldops.telemetry import configure, remote_context, shutdown, span
+from fieldops.trace_context import TraceContext
 from fieldops.web import router as web_router
 from fieldops.web import web_error
 
@@ -41,14 +45,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         current_settings = settings if settings is not None else Settings()
         app.state.settings = current_settings
-        configure_logging(current_settings.environment, current_settings.log_level)
+        configure_logging(
+            current_settings.environment,
+            current_settings.log_level,
+            directory=current_settings.log_directory,
+        )
+        provider = configure(current_settings, "fieldops-web")
         app.state.engine = create_database_engine(current_settings)
+        app.state.metrics = Metrics(app.state.engine)
         logger.info("application_started")
         try:
             yield
         finally:
             app.state.engine.dispose()
             logger.info("application_stopped")
+            shutdown(provider)
 
     app = FastAPI(
         title="FieldOps",
@@ -139,6 +150,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.middleware("http")
     async def request_logging(request: Request, call_next: Callable):
+        carrier = TraceContext.parse(
+            request.headers.get("traceparent"), request.headers.get("tracestate")
+        )
+        with span("HTTP", context=remote_context(carrier), kind=SpanKind.SERVER) as active:
+            response = await logged_request(request, call_next)
+            route = getattr(request.scope.get("route"), "path", "<unmatched>")
+            method = (
+                request.method
+                if request.method in {"GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS"}
+                else "OTHER"
+            )
+            active.update_name(method + " " + route)
+            if response.status_code >= 500:
+                active.set_status(StatusCode.ERROR)
+            active.set_attributes(
+                {
+                    "http.request.method": request.method
+                    if request.method
+                    in {"GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS"}
+                    else "OTHER",
+                    "http.route": route,
+                    "http.response.status_code": response.status_code,
+                }
+            )
+            return response
+
+    async def logged_request(request: Request, call_next: Callable):
         started = perf_counter()
         status_code = 500
         try:
@@ -160,6 +198,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return response
         finally:
             route = request.scope.get("route")
+            if hasattr(request.app.state, "metrics"):
+                request.app.state.metrics.observe(
+                    request.method,
+                    getattr(route, "path", "<unmatched>"),
+                    status_code,
+                    perf_counter() - started,
+                )
             logger.info(
                 "http_request",
                 extra={
@@ -210,6 +255,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/health/live", tags=["health"])
     def live() -> dict[str, str]:
         return {"status": "alive"}
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics(request: Request):
+        # Local web is loopback-only; a hosted proxy must exclude this internal path.
+        return Response(
+            request.app.state.metrics.render(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     @app.get(
         "/health/ready",

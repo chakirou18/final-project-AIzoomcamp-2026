@@ -72,6 +72,12 @@ def main() -> None:
             initialize_credentials(arguments.directory, "session_key")
             initialize_credentials(arguments.control_directory, "operator_key")
             initialize_credentials(arguments.control_directory, "recovery_key")
+            # Dedicated telemetry volume; never chmod/chown existing application data volumes.
+            for telemetry_path in ("/var/log/fieldops", "/var/lib/fieldops-jaeger"):
+                telemetry_directory = Path(telemetry_path)
+                if telemetry_directory.exists():
+                    os.chown(telemetry_directory, 10001, 10001)
+                    os.chmod(telemetry_directory, 0o755)
         else:
             settings = Settings()
             configure_logging(settings.environment, settings.log_level, "fieldops-bootstrap")

@@ -1,0 +1,4 @@
+route:
+  receiver: no-notifications-configured
+receivers:
+  - name: no-notifications-configured

@@ -3,10 +3,11 @@
 from sqlalchemy import Engine, create_engine, text
 
 from fieldops.settings import Settings
+from fieldops.telemetry import instrument_database
 
 
 def create_database_engine(settings: Settings) -> Engine:
-    return create_engine(
+    engine = create_engine(
         settings.database_url(),
         pool_pre_ping=True,
         pool_size=5,
@@ -18,6 +19,8 @@ def create_database_engine(settings: Settings) -> Engine:
             "options": "-c statement_timeout=2000 -c timezone=UTC",
         },
     )
+    instrument_database(engine)
+    return engine
 
 
 def check_database(engine: Engine) -> None:
