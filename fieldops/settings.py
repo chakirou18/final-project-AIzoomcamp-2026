@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     operator_secret_file: Path | None = None
     recovery_secret: SecretStr | None = None
     recovery_secret_file: Path | None = None
+    telemetry_enabled: bool = False
+    otlp_endpoint: str = "http://otel-collector:4318/v1/traces"
+    log_directory: Path | None = None
 
     @model_validator(mode="after")
     def validate_control_credentials(self) -> "Settings":

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from sqlalchemy import Engine, func, select
+from opentelemetry.trace import SpanKind
+from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session
 
 from fieldops.models import Intervention, InterventionHistory, NotificationOutbox, User
@@ -24,7 +26,10 @@ from fieldops.schemas import (
     Status,
     Transition,
 )
+from fieldops.telemetry import current_carrier, log_event, span
 from fieldops.trace_context import TraceContext
+
+logger = logging.getLogger("fieldops.interventions")
 
 
 class InterventionService:
@@ -115,7 +120,8 @@ class InterventionService:
         if job.technician_id == technician_id:
             return
         # Services are also called outside HTTP; malformed optional carriers must not break writes.
-        context = TraceContext.parse(context.traceparent, context.tracestate) if context else None
+        fallback = TraceContext.parse(context.traceparent, context.tracestate) if context else None
+        context = current_carrier(fallback)
         before = self.snapshot(job)
         if job.status == Status.open:
             check_transition(job.status, Status.assigned)
@@ -127,8 +133,10 @@ class InterventionService:
             job.row_version += 1
             job.updated_at = assigned_at
         self.history(db, job, actor, "assigned", before, assigned_at)
+        identifier = uuid4()
         db.add(
             NotificationOutbox(
+                id=identifier,
                 intervention_id=job.id,
                 recipient_id=technician_id,
                 assignment_version=job.assignment_version,
@@ -138,11 +146,26 @@ class InterventionService:
                 tracestate=context.tracestate if context else None,
             )
         )
+        event.listen(
+            db,
+            "after_commit",
+            lambda _: log_event(logger, "notification_enqueued", outbox_id=identifier),
+            once=True,
+        )
 
     def create(
         self, actor_id: UUID, payload: InterventionCreate, context: TraceContext | None = None
     ) -> InterventionResponse:
-        with Session(self.engine, expire_on_commit=False) as db, db.begin():
+        with (
+            span("intervention.assign", enabled=payload.technician_id is not None),
+            span(
+                "notification.enqueue",
+                kind=SpanKind.PRODUCER,
+                enabled=payload.technician_id is not None,
+            ),
+            Session(self.engine, expire_on_commit=False) as db,
+            db.begin(),
+        ):
             actor = self.actor(db, actor_id, "dispatcher")
             now = self.now(db)
             job = Intervention(
@@ -202,7 +225,12 @@ class InterventionService:
         payload: Assignment,
         context: TraceContext | None = None,
     ) -> InterventionResponse:
-        with Session(self.engine, expire_on_commit=False) as db, db.begin():
+        with (
+            span("intervention.assign"),
+            span("notification.enqueue", kind=SpanKind.PRODUCER),
+            Session(self.engine, expire_on_commit=False) as db,
+            db.begin(),
+        ):
             actor = self.actor(db, actor_id, "dispatcher")
             job = self.job(db, identifier, actor, lock=True)
             check_version(job.row_version, payload.expected_version)
