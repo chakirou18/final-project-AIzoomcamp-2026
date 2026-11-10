@@ -21,10 +21,23 @@ USER 10001:10001
 EXPOSE 8000
 CMD ["python", "-m", "fieldops"]
 
-FROM base AS test
+FROM base AS test-dependencies
 RUN uv sync --frozen --no-install-project
+
+FROM test-dependencies AS test
 COPY fieldops/ fieldops/
 COPY alembic.ini ./
 COPY migrations/ migrations/
 COPY tests/ tests/
-CMD ["pytest", "-m", "not container"]
+COPY test_support/ test_support/
+CMD ["python", "-m", "test_support.runner", "backend"]
+
+FROM test-dependencies AS browser
+RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
+    && python -m playwright install --with-deps chromium
+COPY fieldops/ fieldops/
+COPY alembic.ini ./
+COPY migrations/ migrations/
+COPY test_support/ test_support/
+COPY browser_tests/ browser_tests/
+CMD ["python", "-m", "test_support.runner", "browser"]

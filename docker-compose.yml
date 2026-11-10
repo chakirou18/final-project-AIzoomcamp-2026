@@ -108,12 +108,13 @@ services:
     environment:
       FIELDOPS_TEST_DATABASE: "1"
       FIELDOPS_DB_HOST: test-db
-      FIELDOPS_DB_PORT: "5432"
       FIELDOPS_DB_NAME: fieldops_test
       FIELDOPS_DB_USER: fieldops_test
-      FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+      FIELDOPS_DB_PASSWORD: synthetic-isolated-test-only-password
+      FIELDOPS_ENVIRONMENT: local
     volumes:
-      - db_credentials:/run/fieldops:ro
+      - ./artifacts:/app/artifacts
+    networks: [test]
     depends_on:
       test-db:
         condition: service_healthy
@@ -124,16 +125,49 @@ services:
     environment:
       POSTGRES_DB: fieldops_test
       POSTGRES_USER: fieldops_test
-      POSTGRES_PASSWORD_FILE: /run/fieldops/db_password
-    depends_on:
-      credentials:
-        condition: service_completed_successfully
-    volumes:
-      - db_credentials:/run/fieldops:ro
+      POSTGRES_PASSWORD: synthetic-isolated-test-only-password
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql/data:size=512m
+    networks: [test]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test: ["CMD-SHELL", "pg_isready -U fieldops_test -d fieldops_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  browser-tests:
+    profiles: ["browser"]
+    build:
+      context: .
+      target: browser
+    environment:
+      FIELDOPS_TEST_DATABASE: "1"
+      FIELDOPS_DB_HOST: browser-db
+      FIELDOPS_DB_NAME: fieldops_test
+      FIELDOPS_DB_USER: fieldops_test
+      FIELDOPS_DB_PASSWORD: synthetic-isolated-test-only-password
+      FIELDOPS_ENVIRONMENT: local
+      FIELDOPS_DEMO_MODE: "true"
+    volumes:
+      - ./artifacts:/app/artifacts
+    networks: [browser]
+    shm_size: 256m
+    depends_on:
+      browser-db:
+        condition: service_healthy
+
+  browser-db:
+    profiles: ["browser"]
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
+    environment:
+      POSTGRES_DB: fieldops_test
+      POSTGRES_USER: fieldops_test
+      POSTGRES_PASSWORD: synthetic-isolated-test-only-password
+    tmpfs:
+      - /var/lib/postgresql/data:size=512m
+    networks: [browser]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fieldops_test -d fieldops_test"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -144,6 +178,16 @@ volumes:
   control_credentials:
 
 networks:
+  test:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${FIELDOPS_TEST_SUBNET:-10.250.0.0/24}
+  browser:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${FIELDOPS_BROWSER_SUBNET:-10.250.1.0/24}
   default:
     ipam:
       config:

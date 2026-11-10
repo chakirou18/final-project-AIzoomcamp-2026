@@ -1,3 +1,5 @@
+> T08 independent audit update: isolated bounded PostgreSQL runners, ownership-guarded cleanup, Chromium supervisor and N03 benchmark passed after isolated corrections (403 distinct tests; clean-source N03 p95 59.38 ms). Feature-branch publication is owner-authorized; PR review remains pending. Published T07 `96de71d` remains unchanged. Only a T08 commit/push, PR against T07 and Issue #8 comment are authorized; no merge, closure, future phase or deployment. See [T08 validation](t08-validation.md).
+
 > T07 publication update: independent audit PASS (392 distinct tests). Owner authorized feature-branch commit/push, PR against T05 and Issue #7 progress comment only. No merge, closure, T08 or later work or deployment is authorized. See [T07 validation](t07-validation.md).
 
 > T07 current local implementation: PostgreSQL-backed operator dashboard, generation-scoped shared/exclusive worker gate, separate heartbeats and append-only pause/resume audit/results are implemented. Local testing only from T05 `6460870`; no commit/push, future phases or deployment authorized. See [T07 validation](t07-validation.md). Historical status notes below describe earlier baselines.
@@ -29,7 +31,7 @@ Verified 2026-11-09: 15 unique OPEN Issues in the public repository, with exact 
 | T06 | [#5](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/5) | OPEN — not started |
 | T05 | [#6](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/6) | OPEN — not started |
 | T07 | [#7](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/7) | OPEN — not started |
-| T08 | [#8](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/8) | OPEN — not started |
+| T08 | [#8](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/8) | OPEN - independent audit passed; feature-branch publication authorized, PR review pending |
 | T09 | [#9](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/9) | OPEN — not started |
 | T10 | [#10](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/10) | OPEN — not started |
 | T11 | [#11](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/11) | OPEN — not started |
