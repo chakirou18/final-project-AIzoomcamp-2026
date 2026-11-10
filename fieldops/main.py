@@ -3,11 +3,13 @@
 import logging
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from time import perf_counter
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, SQLAlchemyError, TimeoutError
 from starlette.exceptions import HTTPException
 
@@ -20,6 +22,8 @@ from fieldops.routes.interventions import router as intervention_router
 from fieldops.routes.notifications import router as notification_router
 from fieldops.schemas import ErrorResponse
 from fieldops.settings import Settings
+from fieldops.web import router as web_router
+from fieldops.web import web_error
 
 logger = logging.getLogger("fieldops.http")
 
@@ -54,6 +58,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(intervention_router)
     app.include_router(notification_router)
+    app.include_router(web_router)
+    app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def home():
+        return RedirectResponse("/app/login", status_code=303)
+
     original_openapi = app.openapi
 
     def documented_openapi():
@@ -77,12 +88,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             for operation in operations.values():
                 operation["x-implemented"] = True
         schema["info"]["description"] = (
-            "Lifecycle and JSON inbox routes implemented; HTML inbox UI remains deferred."
+            "Lifecycle and JSON inbox routes implemented; HTML workspace available at /app/login."
         )
         return schema
 
     @app.exception_handler(DomainError)
     async def handle_domain_error(request: Request, error: DomainError):
+        if request.url.path.startswith("/app/"):
+            return web_error(request, error.status_code, error.message)
         return JSONResponse(
             status_code=error.status_code,
             content={
@@ -98,10 +111,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.exception_handler(TimeoutError)
     async def handle_database_error(request: Request, error):
         logger.warning("database_unavailable", extra={"error_type": type(error).__name__})
+        if request.url.path.startswith("/app/"):
+            return web_error(request, 503, "Database unavailable. Please try again shortly.")
         return error_response("database_unavailable", "Database operation unavailable", 503)
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(request: Request, error):
+        if request.url.path.startswith("/app/"):
+            return web_error(request, 422, "Invalid request fields. Check the form and try again.")
         # Never echo invalid values, secrets or Pydantic exception context.
         fields = {}
         for item in error.errors():
@@ -124,9 +141,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         status_code = 500
         try:
             response = await call_next(request)
-            if request.url.path.startswith(("/auth/", "/session", "/api/")):
+            if request.url.path.startswith(("/auth/", "/session", "/api/", "/app/")):
                 response.headers["Cache-Control"] = "no-store"
                 response.headers["Vary"] = "Cookie"
+            if request.url.path.startswith("/app/"):
+                response.headers["Content-Security-Policy"] = (
+                    "default-src 'self'; script-src 'self'; style-src 'self'; "
+                    "img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; "
+                    "form-action 'self'; object-src 'none'"
+                )
+                response.headers["X-Content-Type-Options"] = "nosniff"
+                response.headers["Referrer-Policy"] = "same-origin"
             status_code = response.status_code
             return response
         finally:
@@ -143,6 +168,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(HTTPException)
     async def handle_http_error(request: Request, error: HTTPException):
+        if request.url.path.startswith("/app/"):
+            messages = {
+                401: "Your session is missing or expired. Choose a demo identity to continue.",
+                403: "This action is not permitted. Check your identity and form token.",
+                404: "This page or intervention is unavailable.",
+                422: "Invalid request fields. Check the form and try again.",
+            }
+            return web_error(
+                request,
+                error.status_code,
+                messages.get(error.status_code, "Request could not be processed."),
+            )
         # Do not echo arbitrary exception detail, user input or query parameters.
         codes = {
             "unauthenticated",
@@ -162,6 +199,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, error: Exception):
         logger.error("unexpected_error", extra={"error_type": type(error).__name__})
+        if request.url.path.startswith("/app/"):
+            return web_error(request, 500, "An unexpected error occurred. Please try again.")
         return error_response("internal_error", "An unexpected error occurred", 500)
 
     @app.get("/health/live", tags=["health"])

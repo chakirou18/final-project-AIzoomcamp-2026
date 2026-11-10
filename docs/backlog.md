@@ -1,3 +1,5 @@
+> Current task: **T05 / Issue #6 feature-branch publication only**, based on published T06 `1253faa`. The owner authorized one commit, non-force push, a PR targeting feature/t06-notification-worker and an Issue #6 progress comment. No merge, Issue closure, T07 or later implementation, deployment, spending or volume deletion is authorized. See [T05 validation](t05-validation.md). Historical status notes below describe earlier phases.
+
 > Current authorization (2026-11-10): T06 / [Issue #5](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/5) feature-branch publication only, based on published T04 f272f5c. The owner authorized one commit, non-force push, a PR targeting feature/t04-intervention-lifecycle and an Issue #5 progress comment. No merge, Issue closure, T05 or later implementation, deployment, spending or volume deletion is authorized. [T06 validation](t06-validation.md) supersedes historical task-status snapshots below.
 
 # Delivery backlog and proposed GitHub Issues

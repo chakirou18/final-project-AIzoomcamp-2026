@@ -1,3 +1,5 @@
+> Current task: **T05 / Issue #6 feature-branch publication only**, based on published T06 `1253faa`. The owner authorized one commit, non-force push, a PR targeting feature/t06-notification-worker and an Issue #6 progress comment. No merge, Issue closure, T07 or later implementation, deployment, spending or volume deletion is authorized. See [T05 validation](t05-validation.md). Historical status notes below describe earlier phases.
+
 > T06 local implementation update: a separate Python worker claims PostgreSQL outbox rows with SKIP LOCKED and 30-second fenced leases, consumes at most five attempts, and atomically materializes the unique persistent inbox row with delivery acknowledgement. JSON inbox/list/read routes now exist. T04 shared transactions/authorization remain intact. No UI, worker controls/heartbeat tables, observability stack, alerting or agent was added. Current authorization covers T06 feature-branch publication only; historical status/authorization statements below are superseded. See [T06 evidence](t06-validation.md).
 
 # Architecture

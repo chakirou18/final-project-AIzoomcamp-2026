@@ -1,0 +1,55 @@
+{% extends "base.html" %}{% block title %}Interventions{% endblock %}{% block content %}
+<div class="page-heading">
+<div>
+<p class="eyebrow">{{ 'PERSONAL WORKSPACE' if user.role == 'technician' else 'OPERATIONS' }}</p>
+<h1>{{ 'My interventions' if user.role == 'technician' else 'Interventions' }}</h1>
+<p class="text-secondary">{{ 'Your assigned work, from arrival to resolution.' if user.role == 'technician' else 'Plan, assign and follow field work across your team.' }}</p>
+</div>{% if user.role == 'dispatcher' %}<a class="btn btn-primary" href="/app/interventions/new">+ New intervention</a>{% endif %}
+</div>
+<form class="panel p-3 mb-4 row g-3 mx-0" method="get" action="/app/interventions">
+<div class="col-6 col-lg-3">
+<label class="form-label" for="status">Status</label>
+<select class="form-select" id="status" name="status">
+<option value="">All statuses</option>{% for value in statuses %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ value|replace('_',' ')|title }}</option>{% endfor %}
+</select>
+</div>
+<div class="col-6 col-lg-3">
+<label class="form-label" for="priority">Priority</label>
+<select class="form-select" id="priority" name="priority">
+<option value="">All priorities</option>{% for value in priorities %}<option value="{{ value }}" {% if filters.priority == value %}selected{% endif %}>{{ value|title }}</option>{% endfor %}
+</select>
+</div>{% if user.role == 'dispatcher' %}<div class="col-12 col-lg-3">
+<label class="form-label" for="technician_id">Technician</label>
+<select class="form-select" name="technician_id" id="technician_id">
+<option value="">All technicians</option>{% for tech in technicians %}<option value="{{ tech.id }}" {% if filters.technician_id == tech.id %}selected{% endif %}>{{ tech.display_name }}</option>{% endfor %}
+</select>
+</div>{% endif %}
+<div class="col-12 col-lg-3 d-flex align-items-end gap-2">
+<button class="btn btn-dark">Apply filters</button>
+<a class="btn btn-link" href="/app/interventions">Reset</a>
+</div>
+</form>
+<div class="d-flex justify-content-between mb-3">
+<h2 class="h6">Work queue</h2>
+<span class="small text-secondary">{{ page.total }} intervention{{ '' if page.total == 1 else 's' }}</span>
+</div>
+<div class="job-list">{% for job in page.items %}<article class="panel job-card">
+<div>
+<span class="badge status-{{ job.status }}">{{ job.status|replace('_',' ')|title }}</span>
+<h3 class="h5 mt-3">
+<a href="/app/interventions/{{ job.id }}">{{ job.title }}</a>
+</h3>
+<p class="text-secondary mb-0">{{ job.site }}</p>
+</div>
+<div class="job-meta">
+<span class="priority priority-{{ job.priority }}">{{ job.priority|title }} priority</span>
+<span class="small text-secondary">Updated {{ job.updated_at.strftime('%d %b %Y - %H:%M') }} UTC</span>
+<a href="/app/interventions/{{ job.id }}" aria-label="Open {{ job.title }}">View intervention &rarr;</a>
+</div>
+</article>{% else %}<div class="panel empty">
+{% if page.total %}<h3 class="h5">No interventions on this page</h3>
+<a href="{{ first }}">Return to the first page</a>{% else %}<h3 class="h5">No interventions here yet</h3>{% endif %}
+<p class="text-secondary">{% if user.role == 'technician' %}Assigned work will appear here. Check your inbox for assignment notifications.{% else %}Create an intervention or try a different filter.{% endif %}
+</p>
+</div>{% endfor %}
+</div>{% include '_pagination.html' %}{% endblock %}
