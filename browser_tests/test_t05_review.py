@@ -150,7 +150,7 @@ def test_authenticated_pages_are_not_persisted_in_htmx_browser_storage():
         )
         page.get_by_role("link", name="Inbox", exact=True).click()
         expect(page.get_by_role("heading", name="Notification inbox", exact=True)).to_be_visible()
-        page.wait_for_function("window.auditSettled === true")
+        page.wait_for_function("() => window.auditSettled === true")
         # Return a boolean only: failure reports must never serialize hidden CSRF inputs.
         empty = page.evaluate(
             "['sessionStorage','localStorage'].every(key => {"

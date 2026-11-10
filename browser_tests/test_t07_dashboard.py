@@ -18,6 +18,10 @@ PROJECT = os.getenv("FIELDOPS_BROWSER_PROJECT", "fieldops-t07")
 
 
 def compose(*args):
+    if os.getenv("FIELDOPS_TEST_SUPERVISOR_PID"):
+        from test_support.managed import compose as managed_compose
+
+        return managed_compose(*args)
     return (
         subprocess.check_output(
             ["docker", "compose", "--project-name", PROJECT, *args],

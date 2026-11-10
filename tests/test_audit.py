@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from fieldops.main import create_app
 from fieldops.seed import persona_id
+from test_support.database import create_owned
 
 
 @pytest.mark.integration
@@ -129,7 +130,7 @@ def test_existing_data_survives_corrective_migration(pg_engine, pg_settings):
 
     name = "fieldops_review_" + uuid.uuid4().hex + "_test"
     with pg_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-        connection.exec_driver_sql(f'CREATE DATABASE "{name}"')
+        create_owned(connection, name)
     settings = pg_settings.model_copy(update={"db_name": name})
     config = Config("alembic.ini")
     config.attributes["settings"] = settings
@@ -235,7 +236,7 @@ def test_actual_nonlocal_bootstrap_requires_explicit_seed(pg_engine, pg_settings
 
     name = "fieldops_nonlocal_" + uuid.uuid4().hex + "_test"
     with pg_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-        connection.exec_driver_sql(f'CREATE DATABASE "{name}"')
+        create_owned(connection, name)
     settings = pg_settings.model_copy(update={"db_name": name})
     environment = {**os.environ, "FIELDOPS_DB_NAME": name, "FIELDOPS_ENVIRONMENT": "production"}
 
@@ -272,7 +273,7 @@ def test_corrective_migration_fails_without_rewriting_invalid_data(pg_engine, pg
 
     name = "fieldops_invalid_" + uuid.uuid4().hex + "_test"
     with pg_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-        connection.exec_driver_sql(f'CREATE DATABASE "{name}"')
+        create_owned(connection, name)
     settings = pg_settings.model_copy(update={"db_name": name})
     config = Config("alembic.ini")
     config.attributes["settings"] = settings

@@ -24,6 +24,7 @@ from fieldops.models import (
 )
 from fieldops.permissions import inbox_scope, intervention_scope, require_intervention_access
 from fieldops.seed import persona_id
+from test_support.database import create_owned
 
 pytestmark = pytest.mark.integration
 
@@ -32,7 +33,7 @@ def test_empty_database_upgrade_downgrade_upgrade(pg_engine, pg_settings):
     # Unique empty DB; never downgrade the supplied test DB or developer/production state.
     name = "fieldops_t03_" + uuid.uuid4().hex + "_test"
     with pg_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        conn.exec_driver_sql(f'CREATE DATABASE "{name}"')
+        create_owned(conn, name)
     settings = pg_settings.model_copy(update={"db_name": name})
     migrate(settings)
     engine = create_database_engine(settings)
@@ -50,7 +51,7 @@ def test_empty_database_upgrade_downgrade_upgrade(pg_engine, pg_settings):
             assert db.scalar(select(func.count()).select_from(User)) == 4
     finally:
         engine.dispose()
-    # Deliberately retain the isolated DB; no DROP DATABASE/volume removal.
+    # Only this run-owned isolated DB is eligible for fixture cleanup.
 
 
 def test_seed_idempotent_and_does_not_reactivate(db, pg_settings):

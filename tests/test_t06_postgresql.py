@@ -26,6 +26,7 @@ from fieldops.seed import persona_id
 from fieldops.services.interventions import InterventionService
 from fieldops.trace_context import TraceContext
 from fieldops.worker import Claim, OutboxWorker
+from test_support.database import create_owned
 
 pytestmark = pytest.mark.integration
 MANAGER = persona_id("demo-manager")
@@ -41,7 +42,7 @@ def queue(pg_settings):
     base = create_database_engine(pg_settings)
     try:
         with base.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            conn.exec_driver_sql(f'CREATE DATABASE "{name}"')
+            create_owned(conn, name)
     finally:
         base.dispose()
     settings = pg_settings.model_copy(
@@ -58,7 +59,7 @@ def queue(pg_settings):
     try:
         yield OutboxWorker(engine), InterventionService(engine), settings
     finally:
-        engine.dispose()  # Retain the database and its evidence; never DROP DATABASE.
+        engine.dispose()  # Owned fixture database is released by conftest after this case.
 
 
 def assignment(queue, context=None):

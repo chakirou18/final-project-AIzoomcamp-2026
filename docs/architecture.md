@@ -1,3 +1,5 @@
+> T08 independent audit update: isolated bounded PostgreSQL runners, ownership-guarded cleanup, Chromium supervisor and N03 benchmark passed after isolated corrections (403 distinct tests; clean-source N03 p95 59.38 ms). Feature-branch publication is owner-authorized; PR review remains pending. Published T07 `96de71d` remains unchanged. Only a T08 commit/push, PR against T07 and Issue #8 comment are authorized; no merge, closure, future phase or deployment. See [T08 validation](t08-validation.md).
+
 > T07 publication update: independent audit PASS (392 distinct tests). Owner authorized feature-branch commit/push, PR against T05 and Issue #7 progress comment only. No merge, closure, T08 or later work or deployment is authorized. See [T07 validation](t07-validation.md).
 
 > T07 current local implementation: PostgreSQL-backed operator dashboard, generation-scoped shared/exclusive worker gate, separate heartbeats and append-only pause/resume audit/results are implemented. Local testing only from T05 `6460870`; no commit/push, future phases or deployment authorized. See [T07 validation](t07-validation.md). Historical status notes below describe earlier baselines.
@@ -128,18 +130,18 @@ Episode uniqueness includes escalated incidents; repeated alerts for the same st
 
 Telemetry exports use allowlisted fields: never capture request bodies, cookies, Authorization headers, operator secrets, SQL parameters or free-text history changes. Agent/provider inputs contain operational aggregates and pseudonymous event IDs only, not job descriptions/sites or raw unfiltered logs. Use asynchronous bounded export queues. Demo retention defaults: metrics/logs/traces 24 hours, persistent incident audit until explicit owner-approved reset; document disk limits and verify redaction with sentinel-secret fixtures.
 
-## Proposed single-command local workflows
+## Local workflows and future stack contract
 
-None of these commands is executable evidence yet. They specify the implementation contract for T02/T08/T09 and must be verified from a clean checkout before replacing the proposed label in README.
+The core startup is verified by T02-T07 lifecycle evidence. T08 independently verified both test commands from a clean source export; see [T08 validation](t08-validation.md). The observability/incident stack remains proposed and NOT TESTED.
 
 | Purpose | Proposed command | Required runner/profile behavior |
 | --- | --- | --- |
 | Core application + PostgreSQL | `docker compose up --build --wait` | Default services web/worker/db plus one-shot bootstrap: wait for healthy DB, migrate, idempotently seed synthetic data, then start healthy web and worker. Bootstrap fails closed on migration errors; no manual migration command needed for first-run local startup. |
 | Complete required stack | `docker compose --profile observability --profile incident up --build --wait` | Core + all telemetry services + agent; preflight fails clearly if required operator/model credentials are missing. Agent health does not imply successful remediation. |
 | Unit + integration tests | `docker compose --profile test run --build --rm tests` | Runner starts healthy test-db, applies migrations to a disposable test DB and runs both Pytest suites with one exit code. No browser or external model dependency. Includes real PostgreSQL concurrency/failure tests; never points at dev/prod DB. |
-| Browser tests | `docker compose --profile browser run --build --rm browser-tests` | Runner depends on isolated browser-db/bootstrap/web/worker and a pinned Playwright image; seeds deterministic fixtures, waits for real readiness, executes browser suite and saves artifacts. |
+| Browser tests | `docker compose --profile browser run --build --rm browser-tests` | Runner depends on isolated browser-db, supervises real API/worker subprocesses in its own namespace, installs lockfile-selected Playwright/Chromium, seeds fresh fixtures, waits for real readiness and saves artifacts. |
 
-Use explicit Compose dependencies/healthchecks and one-shot service completion, not shell sleep timing. Test runners reset only their disposable database/schema between runs and return nonzero on any failure. Document non-destructive teardown and artifact locations when implemented. Test services are opt-in profiles; bare startup must not run tests or the model. Compose run must start required profile dependencies automatically. Base command is locally HTTP, full hosted environments terminate HTTPS at the proxy. Local secret preflight/config defaults must be documented without committing secrets. The corresponding future Compose/image/runner files do not exist at T01.
+Use explicit Compose dependencies/healthchecks and one-shot service completion, not shell sleep timing. Test runners reset only their disposable database/schema between runs and return nonzero on any failure. Document non-destructive teardown and artifact locations when implemented. Test services are opt-in profiles; bare startup must not run tests or the model. Compose run must start required profile dependencies automatically. Base command is locally HTTP, full hosted environments terminate HTTPS at the proxy. Local secret preflight/config defaults must be documented without committing secrets. These files were absent at T01; T08 now implements the test profiles, while observability/incident profiles remain future work.
 
 ## Deployment, delivery and rollback
 

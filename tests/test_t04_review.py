@@ -27,6 +27,7 @@ from fieldops.schemas import (
 )
 from fieldops.seed import persona_id
 from fieldops.services.interventions import InterventionService
+from test_support.database import create_owned
 
 pytestmark = pytest.mark.integration
 MANAGER = persona_id("demo-manager")
@@ -36,12 +37,12 @@ B = persona_id("demo-technician-b")
 
 @pytest.fixture(scope="module")
 def audit_settings(pg_settings):
-    # No application DB is downgraded or cleared; this DB is retained for inspection.
+    # No application DB is downgraded or cleared; this owned module DB is released at session end.
     name = "fieldops_t04_review_" + uuid4().hex + "_test"
     engine = create_database_engine(pg_settings)
     try:
         with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            conn.exec_driver_sql(f'CREATE DATABASE "{name}"')
+            create_owned(conn, name, scope="session")
     finally:
         engine.dispose()
     settings = pg_settings.model_copy(

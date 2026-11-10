@@ -20,6 +20,7 @@ from fieldops.seed import persona_id
 from fieldops.services.interventions import InterventionService
 from fieldops.web import payload
 from fieldops.worker import OutboxWorker
+from test_support.database import create_owned
 
 MANAGER = persona_id("demo-manager")
 A = persona_id("demo-technician-a")
@@ -49,7 +50,7 @@ def web(pg_settings):
     base = create_database_engine(pg_settings)
     try:
         with base.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
-            connection.exec_driver_sql(f'CREATE DATABASE "{name}"')
+            create_owned(connection, name)
     finally:
         base.dispose()
     settings = pg_settings.model_copy(

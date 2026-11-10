@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T07 operational dashboard, worker heartbeat and bounded pause/resume infrastructure audited locally on published T05; 392 distinct tests passed after isolated corrections. Feature-branch publication authorized; owner PR review pending. Earlier feature PRs remain unmerged.**
+**Status: T08 independent audit passed locally on published T07: 403 distinct tests passed, both isolated runners passed clean-source checks and N03 p95 was 59.38 ms. Feature-branch publication is owner-authorized; PR review remains pending. Earlier feature PRs remain unmerged.**
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -10,7 +10,7 @@ Intended users are dispatchers who organize interventions, technicians who execu
 
 Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
 
-Current authorization: **T07 / [Issue #7](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/7) feature-branch publication only**: one commit, non-force push, PR against feature/t05-web-interface and Issue progress comment. No merge, Issue closure, T08 or later implementation, deployment or spending is authorized. See [T07 validation](docs/t07-validation.md).
+Current authorization: **T08 / [Issue #8](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/8) feature-branch publication only**: one commit, non-force push, PR against T07 and Issue #8 progress comment. No merge, Issue closure, T09 or later work, deployment, purchase or application-volume deletion is authorized. See [T08 validation](docs/t08-validation.md).
 
 ## Capabilities and journeys
 
@@ -80,9 +80,7 @@ The UUID incident is correlation metadata for future integration, not an impleme
 Internal routes must remain private in a future deployment. No T09 telemetry, T10 alerts or T11 model agent
 is implemented. See the validation document for the local failure demonstration and limitations.
 
-PostgreSQL integration fixtures retain isolated databases for inspection. Repeated full runs can fill
-the test service's tmpfs; use a fresh Compose project name and an unused `FIELDOPS_SUBNET` for a new
-audit run. Keep prior projects/data for review. Do not delete application volumes to repair test capacity.
+T08 test infrastructure supersedes the earlier retained-database policy: only databases owned by the current test run are cleaned. Existing application and historical audit data are preserved.
 
 
 ### Web workspace
@@ -97,19 +95,32 @@ persistent notification inbox. Historical assignment notifications do not grant 
 All forms work with JavaScript disabled. Bootstrap 5.3.8 and HTMX 2.0.8 are served locally;
 no CDN or frontend build is required at runtime.
 
-Browser validation is separate from the default database suite:
+### Reproducible testing (T08)
 
-```powershell
-uv sync --frozen
-uv run playwright install chromium
-# Start the local Compose stack first; use a distinct free subnet/port when needed.
-$env:FIELDOPS_BROWSER_URL='http://127.0.0.1:18005'
-uv run pytest browser_tests -v -s -p no:cacheprovider
+Only Docker Engine/Desktop (Linux containers), Docker Compose and network access for the first image build are required. No host Python, virtualenv, copied `.env`, pre-seeded app data or published application port is required:
+
+```sh
+docker compose --profile test run --build --rm tests
+docker compose --profile browser run --build --rm browser-tests
 ```
 
-Browser tests create retained synthetic interventions on the configured local application.
-Never point them at production. Screenshots and XML are ignored local artifacts.
-See [T05 validation](docs/t05-validation.md) for complete commands and actual results.
+The first command runs unit + real PostgreSQL tests. The second installs the lockfile-selected Playwright/Chromium inside its image, starts a test-only API and worker against a fresh isolated database, runs desktop/375px browser journeys with JavaScript on/off, then runs the 1,000-job/five-client/50-request N03 HTTP benchmark. Either command returns nonzero on a suite, benchmark or cleanup failure. The benchmark requires p95 strictly below one second with zero response errors.
+
+Each execution writes `artifacts/t08-{backend|browser}-<run-id>/`: JUnit XML and a cleanup/exit summary, plus browser screenshots, redacted JSON logs and `n03-performance.json` for the browser runner. Failure screenshots mask password inputs; cookie-bearing traces, HAR and storage-state dumps are deliberately excluded. Artifacts remain ignored and local.
+
+Test and browser PostgreSQL services have separate internal networks, no published ports, no application credential/data mounts, and bounded 512MiB tmpfs each. Their passwords are deliberately public synthetic test-only values. Each run uses random database names and ownership comments. Case/session finalizers remove only matching run-owned databases; the supervisor also cleans its own leftovers after failure. SIGTERM/SIGINT are handled; SIGKILL/daemon failure cannot execute a finalizer and may require owner inspection of that dedicated test service. No global Docker pruning or application volume cleanup is performed.
+
+Two simultaneous runs in one Compose project use distinct database/run/artifact IDs. For separate checkouts or projects on the same host, choose unused `FIELDOPS_TEST_SUBNET` and `FIELDOPS_BROWSER_SUBNET` values and a distinct `COMPOSE_PROJECT_NAME`. Defaults are `10.250.0.0/24` and `10.250.1.0/24`; these explicit defaults also handle this host's exhausted automatic Docker address pools. Override an overlapping Docker/VPN route; do not prune unrelated networks. Test services may remain running between commands, but their run-owned databases are cleaned, preventing the former repeated-run tmpfs exhaustion.
+
+Optional host-only checks after `uv sync --frozen`:
+
+```powershell
+uv run pytest -m "not container and not integration"
+$env:FIELDOPS_RUN_CONTAINER_TESTS='1'
+uv run pytest tests/test_container_lifecycle.py -v -s
+```
+
+The four opt-in Docker lifecycle cases create isolated projects with available subnets and fixed free host ports; they preserve their synthetic persistence volumes. They are excluded from the in-container backend runner because that runner has no Docker socket. Their report is a separate gate. See [T08 validation](docs/t08-validation.md) for the inventory, exact counts and actual measurements.
 
 
 Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docker Compose. From the repository root, `docker compose up --build --wait` builds the pinned Python image, generates a local-only database password in a named volume, starts PostgreSQL, runs the Alembic migrations through T07 and idempotent synthetic persona seed, and starts the API plus a separate leased outbox worker. **No .env copy or manual migration/seed command is needed.** Optional overrides belong in an ignored .env; .env.example contains placeholders, not usable credentials. Keep defaults for the first run; do not copy placeholder values unchanged.
@@ -117,9 +128,9 @@ Prerequisites: a running Docker Engine/Desktop in Linux-container mode and Docke
 | Purpose | Command | Status |
 | --- | --- | --- |
 | API + worker + PostgreSQL + bootstrap | `docker compose up --build --wait` | Implemented locally through T06; see T06 validation |
-| Unit + real PostgreSQL integration tests | `docker compose --profile test run --build --rm tests` | T02?T06 regressions; isolated synthetic test databases |
+| Unit + real PostgreSQL integration tests | `docker compose --profile test run --build --rm tests` | T02-T08 regressions; owned disposable test databases |
 | Complete required demo stack | `docker compose --profile observability --profile incident up --build --wait` | Proposed; telemetry/agent profiles do not exist yet |
-| Browser tests | `docker compose --profile browser run --build --rm browser-tests` | Proposed; browser profile does not exist yet |
+| Browser tests | `docker compose --profile browser run --build --rm browser-tests` | T08 isolated Chromium suite + N03 benchmark |
 
 API: [liveness](http://127.0.0.1:8000/health/live), [readiness](http://127.0.0.1:8000/health/ready), [OpenAPI UI](http://127.0.0.1:8000/docs). Only localhost port 8000 is published; PostgreSQL has no host port. Readiness returns 503 when its SELECT 1 fails, while liveness remains 200. Responses/logs never include passwords or connection strings. JSON application logs currently use null trace IDs; real tracing belongs to T09.
 
