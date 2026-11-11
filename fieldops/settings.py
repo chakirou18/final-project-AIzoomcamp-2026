@@ -28,13 +28,15 @@ class Settings(BaseSettings):
     operator_secret_file: Path | None = None
     recovery_secret: SecretStr | None = None
     recovery_secret_file: Path | None = None
+    oncall_secret: SecretStr | None = None
+    oncall_secret_file: Path | None = None
     telemetry_enabled: bool = False
     otlp_endpoint: str = "http://otel-collector:4318/v1/traces"
     log_directory: Path | None = None
 
     @model_validator(mode="after")
     def validate_control_credentials(self) -> "Settings":
-        for name in ("operator", "recovery"):
+        for name in ("operator", "recovery", "oncall"):
             secret = getattr(self, name + "_secret")
             path = getattr(self, name + "_secret_file")
             if path:
@@ -45,7 +47,11 @@ class Settings(BaseSettings):
                 except OSError:
                     raise ValueError("Control credential file is not readable") from None
                 setattr(self, name + "_secret", secret)
-            if name == "recovery" and secret is not None and len(secret.get_secret_value()) < 32:
+            if (
+                name in {"recovery", "oncall"}
+                and secret is not None
+                and len(secret.get_secret_value()) < 32
+            ):
                 raise ValueError("Recovery credential must contain at least 32 characters")
         if (
             self.operator_secret
@@ -53,6 +59,11 @@ class Settings(BaseSettings):
             and self.operator_secret.get_secret_value() == self.recovery_secret.get_secret_value()
         ):
             raise ValueError("Operator and recovery credentials must be distinct")
+        if self.oncall_secret and any(
+            value and value.get_secret_value() == self.oncall_secret.get_secret_value()
+            for value in [self.operator_secret, self.recovery_secret]
+        ):
+            raise ValueError("On-call credential must be distinct")
         return self
 
     def signing_key(self) -> bytes:

@@ -19,6 +19,7 @@ from fieldops.contracts import document_session_boundaries, lifecycle_openapi
 from fieldops.database import check_database, create_database_engine
 from fieldops.logging import configure_logging
 from fieldops.metrics import Metrics
+from fieldops.oncall.web_tools import router as oncall_router
 from fieldops.policy import DomainError
 from fieldops.routes.controls import router as control_router
 from fieldops.routes.interventions import router as intervention_router
@@ -71,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(intervention_router)
     app.include_router(notification_router)
     app.include_router(control_router)
+    app.include_router(oncall_router)
     app.include_router(web_router)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 

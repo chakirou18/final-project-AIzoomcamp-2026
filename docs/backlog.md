@@ -1,3 +1,5 @@
+> T11 local implementation extends published T10 7b6889c with durable PostgreSQL intake, separate agent credentials, explicit incident/generation grants, bounded provider diagnosis, reconciliation and positive delivery verification. Real-model acceptance is blocked pending approved provider access. See [T11 validation](t11-validation.md).
+
 > T10 independent audit passed 459 distinct pytest cases, four rules and 27 Prometheus assertions. Real alert receipt was observed at 103.797 seconds. Owner authorizes audited T10 commit, normal push, PR against unchanged T09 b76b6db and Issue #10 progress comment. Five worker-stop cases and one database-deletion case remain unexecuted under preservation constraints. See [T10 audit](t10-audit.md).
 
 > T09 recovery validation PASS: 123/123 source ZIP hashes verified; web/worker restored; 438 distinct fresh tests including 13/13 observability passed. Conditional T09 feature-branch publication is authorized after audited staging, targeting unchanged published T08 `fcc5bf7`; no merge, Issue closure, T10/T11 work or deployment is authorized. See [T09 validation](t09-validation.md).
@@ -38,9 +40,9 @@ Verified 2026-11-09: 15 unique OPEN Issues in the public repository, with exact 
 | T08 | [#8](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/8) | OPEN - independent audit passed; feature-branch publication authorized, PR review pending |
 | T09 | [#9](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/9) | OPEN - recovery/validation passed (438 distinct tests, 13/13 observability); T09 publication authorized, owner review pending |
 | T10 | [#10](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/10) | OPEN — implemented locally, owner review pending |
-| T11 | [#11](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/11) | OPEN — not started |
-| T12 | [#12](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/12) | OPEN — not started |
-| T13 | [#13](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/13) | OPEN — not started |
+| T11 | [#11](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/11) | OPEN - independently audited locally; real-model acceptance PASSED (local Ollama); publication awaits owner review |
+| T12 | [#12](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/12) | OPEN — locally prepared, not yet published; remote CI/CD acceptance blocked (no push/hosting authorized) |
+| T13 | [#13](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/13) | OPEN — locally prepared, not yet published; remote acceptance blocked (no hosting) |
 | T14 | [#14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14) | OPEN — not started |
 | T15 | [#15](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/15) | OPEN — not started |
 

@@ -143,7 +143,18 @@ def create_app(path=None, webhook_key=None, reader_key=None, run_id=None):
         value = run_id or os.getenv("FIELDOPS_ALERT_RUN_ID")
         app.state.run_id = str(UUID(value)) if value else None
         initialize(app.state.path)
-        yield
+        app.state.incidents = None
+        if os.getenv("FIELDOPS_ONCALL_INTAKE") == "true":
+            from fieldops.database import create_database_engine
+            from fieldops.oncall.store import Store
+            from fieldops.settings import Settings
+
+            app.state.incidents = Store(create_database_engine(Settings()))
+        try:
+            yield
+        finally:
+            if app.state.incidents:
+                app.state.incidents.engine.dispose()
 
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -191,9 +202,15 @@ def create_app(path=None, webhook_key=None, reader_key=None, run_id=None):
         except ValueError:
             raise HTTPException(422, "Invalid alert payload") from None
         try:
+            if app.state.incidents:
+                await run_in_threadpool(app.state.incidents.intake, payload)
             await run_in_threadpool(persist, app.state.path, payload, app.state.run_id)
         except sqlite3.Error:
             raise HTTPException(503, "Evidence storage unavailable") from None
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(503, "Incident storage unavailable") from None
         return {"receipt": "persisted", "recovery": "not_attempted"}
 
     @app.get("/internal/receipts")

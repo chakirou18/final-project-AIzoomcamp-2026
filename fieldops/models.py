@@ -1,4 +1,4 @@
-"""T03 PostgreSQL persistence contracts; no workflow services or worker."""
+"""PostgreSQL application, delivery, control and incident persistence contracts."""
 
 import uuid
 from datetime import datetime
@@ -300,3 +300,89 @@ class WorkerResumeAction(Base):
             name="ck_action_outcome",
         ),
     )
+
+
+class Incident(Base):
+    __tablename__ = "incidents"
+    id: Mapped[uuid.UUID] = identity()
+    episode: Mapped[str] = mapped_column(String(64), unique=True)
+    alert_name: Mapped[str] = mapped_column(String(80))
+    labels: Mapped[dict] = mapped_column(JSONB)
+    alert_status: Mapped[str] = mapped_column(String(10))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    first_seen: Mapped[datetime] = timestamp()
+    latest_seen: Mapped[datetime] = timestamp()
+    state: Mapped[str] = mapped_column(String(30), server_default="RECEIVED")
+    generation: Mapped[int | None] = mapped_column(Integer)
+    telemetry: Mapped[dict | None] = mapped_column(JSONB)
+    diagnosis: Mapped[dict | None] = mapped_column(JSONB)
+    verification: Mapped[dict | None] = mapped_column(JSONB)
+    escalation_reason: Mapped[str | None] = mapped_column(String(80))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_token: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deadline: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    model_attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    last_processed_at: Mapped[datetime] = timestamp()
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('RECEIVED','DIAGNOSING','DIAGNOSED','ACTION_PENDING',"
+            "'ACTION_IN_PROGRESS','VERIFYING','RESOLVED','ESCALATED')",
+            name="ck_incident_state",
+        ),
+        CheckConstraint("alert_status IN ('firing','resolved')", name="ck_incident_alert_status"),
+        CheckConstraint("model_attempts BETWEEN 0 AND 1", name="ck_incident_model_bound"),
+        CheckConstraint(
+            "(state = 'RESOLVED') = (resolved_at IS NOT NULL)", name="ck_incident_resolution"
+        ),
+        Index("ix_incident_work", "state", "lease_until"),
+    )
+
+
+class IncidentEvent(Base):
+    __tablename__ = "incident_events"
+    id: Mapped[uuid.UUID] = identity()
+    incident_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("incidents.id"))
+    event_type: Mapped[str] = mapped_column(String(40))
+    evidence: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = timestamp()
+    __table_args__ = (Index("ix_incident_event_order", "incident_id", "created_at", "id"),)
+
+
+class IncidentAffected(Base):
+    __tablename__ = "incident_affected"
+    incident_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("incidents.id"), primary_key=True)
+    outbox_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    recipient_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+
+
+class IncidentGrant(Base):
+    __tablename__ = "incident_grants"
+    id: Mapped[uuid.UUID] = identity()
+    incident_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("incidents.id"), unique=True)
+    actor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    generation: Mapped[int] = mapped_column(Integer)
+    action: Mapped[str] = mapped_column(String(40))
+    created_at: Mapped[datetime] = timestamp()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        CheckConstraint("action = 'resume_notification_worker'", name="ck_incident_grant_action"),
+        CheckConstraint(
+            "generation > 0 AND expires_at > created_at "
+            "AND expires_at <= created_at + interval '5 minutes'",
+            name="ck_incident_grant_bound",
+        ),
+    )
+
+
+class IncidentAction(Base):
+    __tablename__ = "incident_actions"
+    idempotency_key: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True)
+    incident_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("incidents.id"), unique=True)
+    grant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("incident_grants.id"))
+    generation: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = timestamp()
+    success: Mapped[bool | None] = mapped_column(Boolean)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
