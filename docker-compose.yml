@@ -130,6 +130,8 @@ services:
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=24h", "--storage.tsdb.retention.size=256MB"]
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/notification-rules.yml:/etc/prometheus/notification-rules.yml:ro
+      - ./observability/notification-rules-tests.yml:/etc/prometheus/notification-rules-tests.yml:ro
       - prometheus_data:/prometheus
     mem_limit: 192m
     cpus: 0.5
@@ -140,6 +142,44 @@ services:
       retries: 30
     restart: unless-stopped
 
+  alert-credentials:
+    <<: *app
+    profiles: [observability]
+    user: "0:0"
+    environment: {}
+    command: [python, -m, fieldops.alert_receiver, initialize]
+    volumes:
+      - alert_webhook_credentials:/run/fieldops-webhook
+      - alert_reader_credentials:/run/fieldops-alert-reader
+      - alert_evidence:/var/lib/alerts
+    restart: "no"
+
+  alert-receiver:
+    <<: *app
+    profiles: [observability]
+    command: [python, -m, fieldops.alert_receiver]
+    environment:
+      FIELDOPS_ALERT_RUN_ID: ${FIELDOPS_ALERT_RUN_ID:-}
+    volumes:
+      - alert_webhook_credentials:/run/fieldops-webhook:ro
+      - alert_reader_credentials:/run/fieldops-alert-reader:ro
+      - alert_evidence:/var/lib/alerts
+    depends_on:
+      alert-credentials:
+        condition: service_completed_successfully
+    mem_limit: 128m
+    cpus: 0.5
+    read_only: true
+    tmpfs: [/tmp:size=8m]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health/ready',timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   alertmanager:
     profiles: [observability]
     logging: *bounded-logging
@@ -148,9 +188,13 @@ services:
       dockerfile: Dockerfile.probe
       args:
         COMPONENT_IMAGE: prom/alertmanager:v0.35.0@sha256:e638797febd034838eca8b98cdbd46f951e9bf7f178777aa8669167406a9946c
+    depends_on:
+      alert-receiver:
+        condition: service_healthy
     command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager", "--data.retention=24h", "--cluster.listen-address="]
     volumes:
       - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alert_webhook_credentials:/run/fieldops-webhook:ro
       - alertmanager_data:/alertmanager
     mem_limit: 64m
     cpus: 0.25
@@ -369,6 +413,9 @@ services:
       retries: 30
 
 volumes:
+  alert_webhook_credentials:
+  alert_reader_credentials:
+  alert_evidence:
   postgres_data:
   db_credentials:
   control_credentials:

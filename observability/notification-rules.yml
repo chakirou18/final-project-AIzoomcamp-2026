@@ -1,0 +1,44 @@
+groups:
+  - name: fieldops-notifications
+    interval: 5s
+    rules:
+      - alert: NotificationQueueDelayed
+        expr: (max(fieldops_notification_oldest_undelivered_age_seconds{job="fieldops-web"}) > 60) and on() (sum(fieldops_notifications_undelivered{job="fieldops-web"}) > 0) and on() (min(fieldops_metrics_database_up{job="fieldops-web"}) == 1) and on() (min(up{job="fieldops-web"}) == 1)
+        for: 30s
+        labels:
+          severity: warning
+          service: fieldops-web
+          environment: local
+        annotations:
+          summary: Notification delivery delayed
+          description: Undelivered inbox work is older than 60 seconds. Detection is not recovery.
+      - alert: NotificationMetricsMissing
+        expr: (sum(absent(fieldops_notifications_undelivered{job="fieldops-web"}) or absent(fieldops_notification_oldest_undelivered_age_seconds{job="fieldops-web"}) or absent(fieldops_metrics_database_up{job="fieldops-web"})) > 0) and on() (min(up{job="fieldops-web"}) == 1) and on() (min(fieldops_metrics_database_up{job="fieldops-web"}) == 1 or absent(fieldops_metrics_database_up{job="fieldops-web"}))
+        for: 15s
+        labels:
+          severity: critical
+          service: fieldops-web
+          environment: local
+        annotations:
+          summary: Notification metrics missing
+          description: A successful scrape lacks required notification metrics. Empty is not missing.
+      - alert: NotificationScrapeFailure
+        expr: (min(up{job="fieldops-web"}) == 0) or (sum(absent(up{job="fieldops-web"})) > 0)
+        for: 15s
+        labels:
+          severity: critical
+          service: fieldops-web
+          environment: local
+        annotations:
+          summary: Notification scrape unavailable
+          description: The application metrics target is down or absent. Delivery state is unknown.
+      - alert: NotificationDatabaseUnavailable
+        expr: (min(fieldops_metrics_database_up{job="fieldops-web"}) == 0) and on() (min(up{job="fieldops-web"}) == 1)
+        for: 15s
+        labels:
+          severity: critical
+          service: fieldops-web
+          environment: local
+        annotations:
+          summary: Notification database signal unavailable
+          description: The metrics endpoint cannot read its PostgreSQL snapshot. Queue health is unknown.
