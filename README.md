@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T09 recovered and validated on unchanged published T08 (`fcc5bf7`, PR #22 open). Fresh validation passed 438 distinct tests, including all 13 observability cases, actual Grafana-to-Jaeger navigation and restored worker delivery. T09-only feature-branch publication is authorized after final staged review; earlier feature PRs remain unmerged.**
+**Status: T10 notification alerting is implemented locally on validated T09 `b76b6db` (PR #23 open/unmerged). See the [T10 validation record](docs/t10-validation.md) for timing, regression evidence and the owner review handoff.**
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -10,7 +10,7 @@ Intended users are dispatchers who organize interventions, technicians who execu
 
 Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
 
-Current authorization: **T09 / [Issue #9](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/9) conditional feature-branch publication**. Fresh runtime, regression, security and source-recovery gates pass. Commit/push/PR/progress comment are authorized after final audited staging; PR targets `feature/t08-testing`, remains open/unmerged and Issue #9 remains open. No Docker Desktop restart, force-kill, database/volume deletion, global cleanup, T10/T11 implementation, public deployment or purchase. See [T09 validation](docs/t09-validation.md) and [recovery record](docs/t09-restart-readiness.md).
+The owner authorizes audited T10 publication for [Issue #10](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/10), including commit, normal push, PR against feature/t09-observability and an Issue progress comment. The [independent audit](docs/t10-audit.md) passed 459 distinct pytest cases and measured alert receipt at 103.797 seconds. Merge, deployment, Issue closure and T11 require separate owner authorization.
 
 ## Capabilities and journeys
 
@@ -64,9 +64,9 @@ The proposed delivery policy is automatic PR validation, automatic development d
 docker compose --profile observability up --build --wait
 ```
 
-This adds Prometheus, Grafana, Loki, Alloy, the OpenTelemetry Collector, Jaeger and a no-op Alertmanager to the real API/worker/PostgreSQL stack. Default local URLs are [Grafana](http://127.0.0.1:3000/d/fieldops-operations) and [Jaeger](http://127.0.0.1:16686); only loopback UI ports are published. Change `FIELDOPS_SUBNET`, `FIELDOPS_PORT`, `FIELDOPS_GRAFANA_PORT`, `FIELDOPS_JAEGER_PORT` and `COMPOSE_PROJECT_NAME` together when sharing a host. Keep those values consistent across commands.
+This adds Prometheus, Grafana, Loki, Alloy, the OpenTelemetry Collector, Jaeger and Alertmanager with a private authenticated test evidence receiver to the real API/worker/PostgreSQL stack. Default local URLs are [Grafana](http://127.0.0.1:3000/d/fieldops-operations) and [Jaeger](http://127.0.0.1:16686); only loopback UI ports are published. Change `FIELDOPS_SUBNET`, `FIELDOPS_PORT`, `FIELDOPS_GRAFANA_PORT`, `FIELDOPS_JAEGER_PORT` and `COMPOSE_PROJECT_NAME` together when sharing a host. Keep those values consistent across commands.
 
-Grafana provisions thirteen real-data panels and bounded metric-to-log-to-trace links. The local anonymous role is Viewer, with Explore/transient inspection enabled; persistent dashboard writes remain denied. This is a local synthetic demo, not production authentication. The database-availability panel must be 1 before treating an empty backlog as healthy. Worker heartbeat freshness and pause state are separate signals. No T10 alert rules or T11 agent exists.
+Grafana provisions thirteen real-data panels and bounded metric-to-log-to-trace links. The local anonymous role is Viewer, with Explore/transient inspection enabled; persistent dashboard writes remain denied. This is a local synthetic demo, not production authentication. The database-availability panel must be 1 before treating an empty backlog as healthy. Worker heartbeat freshness and pause state are separate signals. T10 adds four notification alert rules and an authenticated test evidence receiver; no T11 agent exists.
 
 Application tracing is enabled in the local Compose stack and exports asynchronously; `FIELDOPS_TELEMETRY_ENABLED=false` opts out when running only the core app. Exporter/collector failure does not block assignment or inbox commits. `/metrics` remains web-owned even when the worker stops. The future hosted proxy must keep metrics/internal APIs private. Logs exclude payloads, secrets and SQL values, and Alloy has no Docker socket. Metrics/Loki stream labels never contain user, event or trace IDs.
 
@@ -74,6 +74,20 @@ Telemetry has separate volumes, 24-hour retention policies, bounded queues/log r
 
 The future command `docker compose --profile observability --profile incident up --build --wait` is documented but **NOT TESTED as a complete stack** until T11 provides the real agent. An unused profile name does not prove agent startup.
 
+
+### Local notification alerting (T10)
+
+The existing observability profile now evaluates queue age >60s with a 30s pending period and routes alerts through Alertmanager to a private authenticated evidence receiver. Missing metrics, failed scrapes and database snapshot unavailability have distinct alerts. Empty queue is never inferred from unavailable metrics. Detection/receipt/resolution never prove inbox recovery.
+
+The receiver generates separate webhook/read credentials in dedicated volumes; no host port or business/control credentials are exposed. Inspect receipts using an authorized local test, not by publishing keys. The evidence volume caps at 10,000 rows and fails closed rather than silently deleting evidence. The operator pause requires local environment + DEMO_MODE + operator session + CSRF; manual generation-checked resume is cleanup only. No worker kill or autonomous remediation is used for T10.
+
+```powershell
+# Start/retain the exact explicitly synthetic project and port/subnet settings from validation.
+$env:FIELDOPS_RUN_ALERTING_TESTS='1'
+.venv/Scripts/python.exe -m pytest alerting_tests -v -s -p no:cacheprovider
+```
+
+See [T10 validation](docs/t10-validation.md) for promtool commands, exact timing, actual results, access restrictions and the acceptance matrix. Independent audit passed and feature publication is owner-authorized.
 
 ### Operational dashboard and controls (T07)
 
@@ -95,7 +109,7 @@ credential, not an operator session or webhook credential. Resume JSON contains 
 for retries. Success and state commit atomically; changed key bindings or generations are rejected.
 The UUID incident is correlation metadata for future integration, not an implemented incident/agent workflow.
 Internal routes must remain private in a future deployment. T09 adds the telemetry profile described above;
-T10 alerts and the T11 model agent are not implemented. See the validation document for the local failure demonstration and limitations.
+See the local notification alerting section above and the validation document for the failure demonstration and limitations.
 
 T08 test infrastructure supersedes the earlier retained-database policy: only databases owned by the current test run are cleaned. Existing application and historical audit data are preserved.
 
@@ -171,6 +185,6 @@ Live `/docs` describes implemented versioned intervention routes. GET `/contract
 
 `python -m fieldops.worker` runs a separate process using the existing application image. It polls every two seconds, claims at most 20 events with SKIP LOCKED, grants a unique 30-second lease token and consumes one of five attempts per committed claim. Delivery inserts the unique inbox row and marks the matching outbox event delivered in one transaction. Stale or expired tokens cannot complete. Failed delivery retries after 2/4/8/16 seconds; a fifth failure or fifth expired claim stays failed and undelivered. Database outages use bounded reconnect backoff.
 
-Authenticated technicians use GET `/api/v1/notifications` and POST `/api/v1/notifications/{id}/read` (session plus CSRF). Historical assignments retain an immutable ID/version summary but do not grant access to reassigned jobs. The worker has no exposed port or HTTP health endpoint; process startup is not proof of inbox delivery. T07 adds database-backed controls/heartbeat; T09 adds tracing/exporters and telemetry services. T10 alerting and T11 agent work remain deferred.
+Authenticated technicians use GET `/api/v1/notifications` and POST `/api/v1/notifications/{id}/read` (session plus CSRF). Historical assignments retain an immutable ID/version summary but do not grant access to reassigned jobs. The worker has no exposed port or HTTP health endpoint; process startup is not proof of inbox delivery. T07 adds database-backed controls/heartbeat; T09 adds tracing/exporters and telemetry services. T10 adds alert rules and a private test receiver; T11 agent work remains deferred.
 
 [Issue #5 implementation evidence](docs/t06-validation.md) records PostgreSQL concurrency/crash tests, Docker outage/restart checks, benchmark measurements and limitations. Never delete existing volumes to run tests.

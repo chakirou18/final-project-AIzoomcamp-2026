@@ -39,7 +39,7 @@
       {% if data.worker.heartbeat_state != 'fresh' %}<p class="alert alert-warning" role="status">No fresh worker heartbeat. A running gate does not prove a process is available. API readiness checks only PostgreSQL.</p>{% endif %}
       {% if data.worker.paused %}<p>Pause effective at {{ data.worker.effective_at.strftime('%H:%M:%S') }} UTC; expires at {{ data.worker.expires_at.strftime('%H:%M:%S') }} UTC.</p><p class="small">A paused worker continues sending heartbeats. Pause is not a process failure.</p>{% endif %}
       {% if data.worker.pause_expired %}<p class="alert alert-warning">Pause deadline passed. Waiting for database-backed worker reconciliation; this is not an agent recovery.</p>{% endif %}
-      {% if demo_mode and not data.worker.paused %}
+      {% if can_pause and not data.worker.paused %}
       <details><summary>Controlled demo pause</summary>
         <p class="small mt-3">Stops new claims and delivery after active transactions finish. Automatically expires within ten minutes. Use only with an empty queue and synthetic assignments.</p>
         <form method="post" action="/app/worker/pause">

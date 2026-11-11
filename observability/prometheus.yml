@@ -9,7 +9,8 @@ scrape_configs:
         labels:
           service: fieldops-web
           environment: local
-# T10 owns alert rules. Alertmanager is provisioned but has no incident receiver.
+rule_files:
+  - /etc/prometheus/notification-rules.yml
 alerting:
   alertmanagers:
     - static_configs:

@@ -20,6 +20,8 @@ from fieldops.auth import (
     cookie_options,
     current_session,
     demo_enabled,
+    fault_simulation_allowed,
+    fault_simulation_enabled,
     personas,
     revoke,
     signed,
@@ -352,13 +354,13 @@ async def operator_login(request: Request):
 def dashboard_page(request: Request, session: Identity):
     data = ControlService(request.app.state.engine).dashboard(session[1].id)
     return render(
-        request, "dashboard", session, data=data, demo_mode=request.app.state.settings.demo_mode
+        request, "dashboard", session, data=data, can_pause=fault_simulation_allowed(request)
     )
 
 
 @router.post("/worker/pause")
 async def pause_worker(request: Request, session: Identity):
-    demo_enabled(request)
+    fault_simulation_enabled(request)
     data = await fields(request)
     check_csrf(request, session[0].csrf_token, data.pop("csrf_token", ""))
     try:

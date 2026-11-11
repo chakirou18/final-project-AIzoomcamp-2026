@@ -1,0 +1,486 @@
+{
+  "rule_files": [
+    "notification-rules.yml"
+  ],
+  "evaluation_interval": "5s",
+  "tests": [
+    {
+      "name": "delay threshold and thirty second pending",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notifications_undelivered{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notification_oldest_undelivered_age_seconds{job=\"fieldops-web\"}",
+          "values": "0+5x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "60s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "90s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "95s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "warning",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification delivery delayed",
+                "description": "Undelivered inbox work is older than 60 seconds. Detection is not recovery."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "exact threshold never fires",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notifications_undelivered{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notification_oldest_undelivered_age_seconds{job=\"fieldops-web\"}",
+          "values": "60x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "180s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "empty queue with stale age stays quiet",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notifications_undelivered{job=\"fieldops-web\"}",
+          "values": "0x40"
+        },
+        {
+          "series": "fieldops_notification_oldest_undelivered_age_seconds{job=\"fieldops-web\"}",
+          "values": "100x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "180s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "180s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "180s",
+          "alertname": "NotificationScrapeFailure",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "180s",
+          "alertname": "NotificationDatabaseUnavailable",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "missing all queue metrics",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "10s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification metrics missing",
+                "description": "A successful scrape lacks required notification metrics. Empty is not missing."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "90s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "missing database availability signal",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification metrics missing",
+                "description": "A successful scrape lacks required notification metrics. Empty is not missing."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "failed scrape",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "0x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "10s",
+          "alertname": "NotificationScrapeFailure",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationScrapeFailure",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification scrape unavailable",
+                "description": "The application metrics target is down or absent. Delivery state is unknown."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "30s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "absent target",
+      "interval": "5s",
+      "input_series": [],
+      "alert_rule_test": [
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationScrapeFailure",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification scrape unavailable",
+                "description": "The application metrics target is down or absent. Delivery state is unknown."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "db unavailable",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "0x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationDatabaseUnavailable",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification database signal unavailable",
+                "description": "The metrics endpoint cannot read its PostgreSQL snapshot. Queue health is unknown."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "30s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": []
+        },
+        {
+          "eval_time": "90s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "clear after recovery",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "0x4 1x36"
+        },
+        {
+          "series": "fieldops_notifications_undelivered{job=\"fieldops-web\"}",
+          "values": "0x40"
+        },
+        {
+          "series": "fieldops_notification_oldest_undelivered_age_seconds{job=\"fieldops-web\"}",
+          "values": "0x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationDatabaseUnavailable",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification database signal unavailable",
+                "description": "The metrics endpoint cannot read its PostgreSQL snapshot. Queue health is unknown."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "25s",
+          "alertname": "NotificationDatabaseUnavailable",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "delay clears",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notifications_undelivered{job=\"fieldops-web\"}",
+          "values": "1x10 0x30"
+        },
+        {
+          "series": "fieldops_notification_oldest_undelivered_age_seconds{job=\"fieldops-web\"}",
+          "values": "100x10 0x30"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "30s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "warning",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification delivery delayed",
+                "description": "Undelivered inbox work is older than 60 seconds. Detection is not recovery."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "55s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "missing only fieldops_notifications_undelivered",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notification_oldest_undelivered_age_seconds{job=\"fieldops-web\"}",
+          "values": "100x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification metrics missing",
+                "description": "A successful scrape lacks required notification metrics. Empty is not missing."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "90s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        }
+      ]
+    },
+    {
+      "name": "missing only fieldops_notification_oldest_undelivered_age_seconds",
+      "interval": "5s",
+      "input_series": [
+        {
+          "series": "up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_metrics_database_up{job=\"fieldops-web\"}",
+          "values": "1x40"
+        },
+        {
+          "series": "fieldops_notifications_undelivered{job=\"fieldops-web\"}",
+          "values": "1x40"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "15s",
+          "alertname": "NotificationMetricsMissing",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "critical",
+                "service": "fieldops-web",
+                "environment": "local"
+              },
+              "exp_annotations": {
+                "summary": "Notification metrics missing",
+                "description": "A successful scrape lacks required notification metrics. Empty is not missing."
+              }
+            }
+          ]
+        },
+        {
+          "eval_time": "90s",
+          "alertname": "NotificationQueueDelayed",
+          "exp_alerts": []
+        }
+      ]
+    }
+  ]
+}

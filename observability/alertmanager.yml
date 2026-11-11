@@ -1,4 +1,17 @@
 route:
-  receiver: no-notifications-configured
+  receiver: fieldops-test-evidence
+  group_by: [alertname, service, environment]
+  group_wait: 5s
+  group_interval: 5s
+  repeat_interval: 1h
 receivers:
-  - name: no-notifications-configured
+  - name: fieldops-test-evidence
+    webhook_configs:
+      - url: http://alert-receiver:8010/internal/alerts
+        send_resolved: true
+        max_alerts: 20
+        timeout: 3s
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /run/fieldops-webhook/key

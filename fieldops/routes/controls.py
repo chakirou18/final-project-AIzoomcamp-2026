@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Security
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from fieldops.auth import current_user, demo_enabled, require_csrf
+from fieldops.auth import current_user, fault_simulation_enabled, require_csrf
 from fieldops.control_schemas import (
     Dashboard,
     PauseRequest,
@@ -52,7 +52,7 @@ def dashboard(request: Request, actor: Reader):
 @router.post(
     "/demo/worker/pause",
     response_model=WorkerStatus,
-    dependencies=[Depends(demo_enabled)],
+    dependencies=[Depends(fault_simulation_enabled)],
     description=(
         "Demo-only operator + CSRF. "
         "Acknowledges the committed gate after active transactions finish."

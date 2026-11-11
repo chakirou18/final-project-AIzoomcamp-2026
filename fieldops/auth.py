@@ -87,6 +87,16 @@ def demo_enabled(request: Request):
         raise HTTPException(404, "not_found")
 
 
+def fault_simulation_allowed(request: Request) -> bool:
+    settings = request.app.state.settings
+    return settings.demo_mode and settings.environment == "local"
+
+
+def fault_simulation_enabled(request: Request):
+    if not fault_simulation_allowed(request):
+        raise HTTPException(404, "not_found")
+
+
 def current_session(
     request: Request,
     session_cookie: Annotated[str | None, Security(cookie_scheme)] = None,
