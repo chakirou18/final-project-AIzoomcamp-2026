@@ -171,7 +171,7 @@ class ControlService:
             raise DomainError(*failure)
         return response
 
-    def resume(self, command: ResumeRequest) -> ResumeResult:
+    def resume(self, command: ResumeRequest, oncall_context=None) -> ResumeResult:
         with Session(self.engine, expire_on_commit=False) as db, db.begin():
             row = gate(db, shared=False)
             previous = db.get(WorkerResumeAction, command.idempotency_key)
@@ -184,6 +184,9 @@ class ControlService:
                         409, "idempotency_conflict", "Key is bound to another request"
                     )
                 return ResumeResult.model_validate(previous)
+            from fieldops.oncall.web_tools import execution_guard
+
+            incident_action = execution_guard(db, command, row, oncall_context)
             now = db.scalar(select(func.clock_timestamp()))
             expire(db, row, now)
             outcome = (
@@ -203,6 +206,9 @@ class ControlService:
                 recorded_at=now,
             )
             db.add(result)
+            if incident_action is not None:
+                incident_action.success = result.success
+                incident_action.completed_at = now
             audit(db, row, "resume", "agent", outcome)
             db.flush()
             response = ResumeResult.model_validate(result)

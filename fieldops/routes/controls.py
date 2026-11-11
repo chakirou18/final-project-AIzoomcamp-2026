@@ -34,8 +34,14 @@ def internal(
     configured = request.app.state.settings.recovery_secret
     expected = configured.get_secret_value() if configured else ""
     supplied = value.credentials if value else ""
-    if len(expected) < 32 or not hmac.compare_digest(expected.encode(), supplied.encode()):
-        raise HTTPException(401, "unauthenticated")
+    if len(expected) >= 32 and hmac.compare_digest(expected.encode(), supplied.encode()):
+        return
+    agent_secret = request.app.state.settings.oncall_secret
+    agent_key = agent_secret.get_secret_value() if agent_secret else ""
+    if len(agent_key) >= 32 and hmac.compare_digest(agent_key.encode(), supplied.encode()):
+        request.state.oncall_agent_authenticated = True
+        return
+    raise HTTPException(401, "unauthenticated")
 
 
 @router.get(
@@ -83,7 +89,16 @@ def status(request: Request):
     ),
 )
 def resume(request: Request, command: ResumeRequest):
-    result = ControlService(request.app.state.engine).resume(command)
+    settings = request.app.state.settings
+    result = ControlService(request.app.state.engine).resume(
+        command,
+        (
+            settings.environment,
+            settings.demo_mode,
+            request.headers.get("x-fieldops-authorization", ""),
+            getattr(request.state, "oncall_agent_authenticated", False),
+        ),
+    )
     return JSONResponse(
         status_code=200 if result.success else 409, content=result.model_dump(mode="json")
     )

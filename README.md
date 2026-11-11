@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T10 notification alerting is implemented locally on validated T09 `b76b6db` (PR #23 open/unmerged). See the [T10 validation record](docs/t10-validation.md) for timing, regression evidence and the owner review handoff.**
+**Status: T11 passed an independent audit on published T10 7b6889c (PR #24 open), including a genuine real-model recovery with the owner's existing local Ollama `llama3.2:3b` at zero cost. T12 CI/CD workflows and T13 deployment procedures are locally prepared but not yet published or remotely validated; remote CI, hosting and deployment remain unauthorized. See [T11 audit](docs/t11-audit.md).**
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -10,7 +10,7 @@ Intended users are dispatchers who organize interventions, technicians who execu
 
 Owner-approved demo choices: separate manager (dispatcher) and technician identities, synthetic data, a paused-notification-delivery-loop incident and authenticated/audited On-Call operations. T01 documentation/public Issue publication is complete. Deployment, paid infrastructure and API purchases remain unauthorized.
 
-The owner authorizes audited T10 publication for [Issue #10](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/10), including commit, normal push, PR against feature/t09-observability and an Issue progress comment. The [independent audit](docs/t10-audit.md) passed 459 distinct pytest cases and measured alert receipt at 103.797 seconds. Merge, deployment, Issue closure and T11 require separate owner authorization.
+The owner authorizes T11 local implementation and validation for [Issue #11](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/11). Publication and the next task require owner review.
 
 ## Capabilities and journeys
 
@@ -66,13 +66,13 @@ docker compose --profile observability up --build --wait
 
 This adds Prometheus, Grafana, Loki, Alloy, the OpenTelemetry Collector, Jaeger and Alertmanager with a private authenticated test evidence receiver to the real API/worker/PostgreSQL stack. Default local URLs are [Grafana](http://127.0.0.1:3000/d/fieldops-operations) and [Jaeger](http://127.0.0.1:16686); only loopback UI ports are published. Change `FIELDOPS_SUBNET`, `FIELDOPS_PORT`, `FIELDOPS_GRAFANA_PORT`, `FIELDOPS_JAEGER_PORT` and `COMPOSE_PROJECT_NAME` together when sharing a host. Keep those values consistent across commands.
 
-Grafana provisions thirteen real-data panels and bounded metric-to-log-to-trace links. The local anonymous role is Viewer, with Explore/transient inspection enabled; persistent dashboard writes remain denied. This is a local synthetic demo, not production authentication. The database-availability panel must be 1 before treating an empty backlog as healthy. Worker heartbeat freshness and pause state are separate signals. T10 adds four notification alert rules and an authenticated test evidence receiver; no T11 agent exists.
+Grafana provisions thirteen real-data panels and bounded metric-to-log-to-trace links. The local anonymous role is Viewer, with Explore/transient inspection enabled; persistent dashboard writes remain denied. This is a local synthetic demo, not production authentication. The database-availability panel must be 1 before treating an empty backlog as healthy. Worker heartbeat freshness and pause state are separate signals. T10 supplies four notification alert rules and the authenticated receiver. T11 adds durable incident intake and an optional private processing service.
 
 Application tracing is enabled in the local Compose stack and exports asynchronously; `FIELDOPS_TELEMETRY_ENABLED=false` opts out when running only the core app. Exporter/collector failure does not block assignment or inbox commits. `/metrics` remains web-owned even when the worker stops. The future hosted proxy must keep metrics/internal APIs private. Logs exclude payloads, secrets and SQL values, and Alloy has no Docker socket. Metrics/Loki stream labels never contain user, event or trace IDs.
 
 Telemetry has separate volumes, 24-hour retention policies, bounded queues/log rotation and explicit CPU/memory caps. Retention is asynchronous, not a hard filesystem quota. Do not prune or delete application volumes to make space; on a small shared Docker host run expensive validation gates sequentially. See [T09 validation](docs/t09-validation.md) for actual component versions/digests, startup failures/corrections, trace JSON, tests, browser evidence and resource measurements.
 
-The future command `docker compose --profile observability --profile incident up --build --wait` is documented but **NOT TESTED as a complete stack** until T11 provides the real agent. An unused profile name does not prove agent startup.
+The full-stack command `docker compose --profile observability --profile incident up --build --wait` starts the T11 incident processor with the existing monitoring services. Local startup is verified, and a real-model recovery was demonstrated with the provider variables above.
 
 
 ### Local notification alerting (T10)
@@ -88,6 +88,16 @@ $env:FIELDOPS_RUN_ALERTING_TESTS='1'
 ```
 
 See [T10 validation](docs/t10-validation.md) for promtool commands, exact timing, actual results, access restrictions and the acceptance matrix. Independent audit passed and feature publication is owner-authorized.
+
+### Local On-Call recovery (T11)
+
+The incident profile adds a private process and PostgreSQL incident history to the existing monitoring stack.
+
+    docker compose --profile observability --profile incident up --build --wait
+
+The default provider is unconfigured and blocked incidents escalate safely. An approved existing Ollama service is configured with FIELDOPS_ONCALL_PROVIDER=ollama, FIELDOPS_ONCALL_PROVIDER_URL, FIELDOPS_ONCALL_MODEL, FIELDOPS_ONCALL_PROVIDER_APPROVED=true and the bounded FIELDOPS_ONCALL_PROVIDER_TIMEOUT (5–30 s). The durable cumulative call budget defaults to one and output is limited to 1,024 tokens. The real-model demonstration used `llama3.2:3b` on CPU (structured output crashes this machine's Vulkan backend); see [T11 audit](docs/t11-audit.md). Model output is advisory: the deterministic policy and the application's execution guard decide.
+
+An authenticated operator inspects GET /api/v1/incidents and GET /api/v1/incidents/{id}, then grants an incident/generation-specific authorization through POST /api/v1/incidents/{id}/authorize with CSRF. The agent's separate bearer can perform only a validated incident resume. Resolution requires the persisted action and independently verified outbox/inbox delivery across two healthy samples. See [T11 validation](docs/t11-validation.md) for the state machine, commands, mocked live result and remaining gate.
 
 ### Operational dashboard and controls (T07)
 
@@ -107,7 +117,7 @@ Running API readiness does not prove worker or delivery health.
 credential, not an operator session or webhook credential. Resume JSON contains only `incident_id`,
 `expected_generation` and `idempotency_key` UUIDs (generation is an integer). Reuse the exact same key/body
 for retries. Success and state commit atomically; changed key bindings or generations are rejected.
-The UUID incident is correlation metadata for future integration, not an implemented incident/agent workflow.
+T11 binds incident UUIDs to durable incident records and scoped operator grants. The legacy recovery bearer remains available for explicit test cleanup.
 Internal routes must remain private in a future deployment. T09 adds the telemetry profile described above;
 See the local notification alerting section above and the validation document for the failure demonstration and limitations.
 

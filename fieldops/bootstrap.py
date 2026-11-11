@@ -72,6 +72,9 @@ def main() -> None:
             initialize_credentials(arguments.directory, "session_key")
             initialize_credentials(arguments.control_directory, "operator_key")
             initialize_credentials(arguments.control_directory, "recovery_key")
+            oncall_directory = Path("/run/oncall-action")
+            if oncall_directory.exists():
+                initialize_credentials(oncall_directory, "oncall_key")
             # Dedicated telemetry volume; never chmod/chown existing application data volumes.
             for telemetry_path in ("/var/log/fieldops", "/var/lib/fieldops-jaeger"):
                 telemetry_directory = Path(telemetry_path)
