@@ -1,0 +1,125 @@
+# Manual production rollback behind the same approval boundary as promotion. Only a digest
+# that previously completed a successful production deployment is accepted. Schema is never
+# downgraded and data is never restored by this workflow.
+name: rollback-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "Previously successful production digest to redeploy (sha256:...)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify the digest previously succeeded in production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      deployments: read
+      packages: read
+    outputs:
+      image_ref: ${{ steps.manifest.outputs.image_ref }}
+      commit: ${{ steps.verify.outputs.commit }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INPUT_DIGEST: ${{ inputs.digest }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - id: verify
+        run: python3 scripts/deploy/verify_digest.py "$INPUT_DIGEST" production
+      - id: manifest
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: |
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+          IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY,,}@${INPUT_DIGEST}"
+          docker manifest inspect "$IMAGE_REF" >/dev/null
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+
+  rollback:
+    name: Roll production back (approval required)
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      deployments: write
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      IMAGE_REF: ${{ needs.verify.outputs.image_ref }}
+      DIGEST: ${{ inputs.digest }}
+      SOURCE_COMMIT: ${{ needs.verify.outputs.commit }}
+      TARGET_URL: ${{ vars.PRODUCTION_URL }}
+      DEPLOY_TARGET: ${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}
+      ENVIRONMENT: production
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Redeploy the previous compatible digest
+        id: release
+        run: |
+          ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_TARGET" \
+            "sudo -n /srv/fieldops/bin/deploy.sh $ENVIRONMENT $IMAGE_REF" | tail -n 1 > host-rollback.json
+      - name: Smoke after rollback
+        run: python3 scripts/smoke/smoke.py --base-url "$TARGET_URL" --environment "$ENVIRONMENT" --output smoke-rollback.json
+      - name: Record the rollback
+        if: always() && steps.release.outcome == 'success'
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          record = json.load(open("host-rollback.json"))
+          body = {
+              "ref": os.environ["SOURCE_COMMIT"] or os.environ["GITHUB_SHA"],
+              "environment": os.environ["ENVIRONMENT"],
+              "auto_merge": False,
+              "required_contexts": [],
+              "production_environment": True,
+              "description": "rollback to " + os.environ["IMAGE_REF"],
+              "payload": {
+                  "digest": os.environ["DIGEST"],
+                  "image": os.environ["IMAGE_REF"],
+                  "rollback": True,
+                  "previous": record.get("previous", ""),
+                  "migration_version": record.get("migration_version", ""),
+                  "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              },
+          }
+          json.dump(body, open("deployment.json", "w"))
+          PY
+          ID="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments" --input deployment.json --jq .id)"
+          STATE=success; [ "$JOB_STATUS" = "success" ] || STATE=failure
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${ID}/statuses" -f state="$STATE" -f environment="$ENVIRONMENT" -f description="rollback ${STATE}" >/dev/null
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: production-rollback
+          path: |
+            host-rollback.json
+            smoke-rollback.json
+          if-no-files-found: ignore

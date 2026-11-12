@@ -1,0 +1,168 @@
+# Manual production promotion. Accepts only a digest that completed a successful development
+# deployment, never rebuilds, and reaches production secrets only after the protected
+# `production` environment's required reviewer approval.
+name: promote-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "Immutable image digest from a successful development deployment (sha256:...)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify the digest was development-tested
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      deployments: read
+      packages: read
+    outputs:
+      image_ref: ${{ steps.manifest.outputs.image_ref }}
+      commit: ${{ steps.verify.outputs.commit }}
+      source_run: ${{ steps.verify.outputs.source_run }}
+      migration_version: ${{ steps.verify.outputs.migration_version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INPUT_DIGEST: ${{ inputs.digest }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Reject unknown, failed or never-deployed digests
+        id: verify
+        run: python3 scripts/deploy/verify_digest.py "$INPUT_DIGEST" development
+      - name: Confirm the exact digest exists in the registry
+        id: manifest
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: |
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+          IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY,,}@${INPUT_DIGEST}"
+          docker manifest inspect "$IMAGE_REF" >/dev/null
+          echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+
+  promote:
+    name: Promote to production (approval required)
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      deployments: write
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      IMAGE_REF: ${{ needs.verify.outputs.image_ref }}
+      DIGEST: ${{ inputs.digest }}
+      SOURCE_COMMIT: ${{ needs.verify.outputs.commit }}
+      SOURCE_RUN: ${{ needs.verify.outputs.source_run }}
+      TARGET_URL: ${{ vars.PRODUCTION_URL }}
+      DEPLOY_TARGET: ${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}
+      ENVIRONMENT: production
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Prepare SSH identity for the production host only
+        env:
+          SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Release the identical tested digest on the production host
+        id: release
+        run: |
+          ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_TARGET" \
+            "sudo -n /srv/fieldops/bin/deploy.sh $ENVIRONMENT $IMAGE_REF" | tail -n 1 > host-release.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          record = json.load(open("host-release.json"))
+          print("previous=" + record.get("previous", ""))
+          print("migration=" + record.get("migration_version", ""))
+          print("backup=" + record.get("backup", ""))
+          PY
+      - name: Record the production deployment
+        id: deployment
+        env:
+          MIGRATION: ${{ steps.release.outputs.migration }}
+          PREVIOUS: ${{ steps.release.outputs.previous }}
+          BACKUP: ${{ steps.release.outputs.backup }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          payload = {
+              "digest": os.environ["DIGEST"],
+              "image": os.environ["IMAGE_REF"],
+              "commit": os.environ["SOURCE_COMMIT"],
+              "migration_version": os.environ["MIGRATION"],
+              "previous": os.environ["PREVIOUS"],
+              "backup": os.environ["BACKUP"],
+              "source_run": os.environ["SOURCE_RUN"],
+              "approved_by_environment": os.environ["ENVIRONMENT"],
+              "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          }
+          body = {
+              "ref": os.environ["SOURCE_COMMIT"] or os.environ["GITHUB_SHA"],
+              "environment": os.environ["ENVIRONMENT"],
+              "auto_merge": False,
+              "required_contexts": [],
+              "production_environment": True,
+              "description": "digest " + os.environ["DIGEST"],
+              "payload": payload,
+          }
+          json.dump(body, open("deployment.json", "w"))
+          PY
+          ID="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments" --input deployment.json --jq .id)"
+          echo "id=${ID}" >> "$GITHUB_OUTPUT"
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${ID}/statuses" -f state=in_progress -f environment="$ENVIRONMENT" >/dev/null
+      - name: Smoke the production journey (never pauses delivery)
+        run: python3 scripts/smoke/smoke.py --base-url "$TARGET_URL" --environment "$ENVIRONMENT" --output smoke-production.json
+      - name: Mark production release successful
+        if: success()
+        env:
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
+          MIGRATION: ${{ steps.release.outputs.migration }}
+          PREVIOUS: ${{ steps.release.outputs.previous }}
+        run: gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" -f state=success -f environment="$ENVIRONMENT" -f environment_url="$TARGET_URL" -f description="smoke passed; migration ${MIGRATION}; previous ${PREVIOUS}" >/dev/null
+      - name: Roll back to the previous compatible digest and mark failure
+        if: failure() && steps.release.outcome == 'success'
+        env:
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
+          PREVIOUS: ${{ steps.release.outputs.previous }}
+        run: |
+          if [ -n "$PREVIOUS" ]; then
+            ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_TARGET" \
+              "sudo -n /srv/fieldops/bin/deploy.sh $ENVIRONMENT $PREVIOUS" | tail -n 1 > host-rollback.json
+            python3 scripts/smoke/smoke.py --base-url "$TARGET_URL" --environment "$ENVIRONMENT" --output smoke-rollback.json || true
+          else
+            echo "::error::no previous digest recorded; bootstrap failure requires operator intervention"
+          fi
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" -f state=failure -f environment="$ENVIRONMENT" -f description="smoke failed; rolled back to ${PREVIOUS:-none}" >/dev/null
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: production-deployment
+          path: |
+            host-release.json
+            host-rollback.json
+            smoke-production.json
+            smoke-rollback.json
+          if-no-files-found: ignore

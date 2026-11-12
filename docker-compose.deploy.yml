@@ -1,0 +1,49 @@
+# Hosted-environment override: run the published immutable application digest, never build.
+#
+#   docker compose --env-file deploy/environments/<env>.env \
+#     -f docker-compose.yml -f docker-compose.deploy.yml --profile observability --profile incident ...
+#
+# Every environment supplies its own Compose project name, database name/user, published
+# ports, subnet and FIELDOPS_IMAGE (registry@sha256 digest). No service exposes a port on
+# 0.0.0.0; the reverse proxy in the hosting layer terminates TLS and forwards to the
+# loopback web port only. See docs/t13-deployment.md.
+
+x-digest-image: &digest-image
+  image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+  build: !reset null
+  pull_policy: always
+
+services:
+  credentials:
+    <<: *digest-image
+  bootstrap:
+    <<: *digest-image
+    environment:
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+      FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:?}
+  web:
+    <<: *digest-image
+    environment:
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+      FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:?}
+      FIELDOPS_PUBLIC_HTTPS: "true"
+    ports: !override
+      - "127.0.0.1:${FIELDOPS_PORT:?}:8000"
+  worker:
+    <<: *digest-image
+    environment:
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+  alert-credentials:
+    <<: *digest-image
+  alert-receiver:
+    <<: *digest-image
+  oncall-bootstrap:
+    <<: *digest-image
+  oncall-agent:
+    <<: *digest-image
+  jaeger:
+    ports: !override
+      - "127.0.0.1:${FIELDOPS_JAEGER_PORT:?}:16686"
+  grafana:
+    ports: !override
+      - "127.0.0.1:${FIELDOPS_GRAFANA_PORT:?}:3000"

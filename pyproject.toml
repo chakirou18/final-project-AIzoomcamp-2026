@@ -34,6 +34,7 @@ addopts = "-ra --strict-markers"
 markers = [
     "integration: requires an explicitly configured real PostgreSQL test database",
     "container: opt-in isolated Docker Compose lifecycle tests",
+    "pipeline: CI/CD configuration checks that render Compose files with the docker CLI",
 ]
 
 [tool.ruff]
