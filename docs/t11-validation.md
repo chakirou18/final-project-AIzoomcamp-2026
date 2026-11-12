@@ -241,7 +241,7 @@ Owner review can assess the local source, deterministic provider tests, real mon
 
 ## Independent audit ledger (2026-11-11, Claude takeover)
 
-Corrected code (freshness anchor, budget ordering, bounded timeout, prompt semantics) was validated with the suites below on images rebuilt from the final workspace. Details, commands and the acceptance matrix are in [T11 audit](t11-audit.md).
+Corrected code (freshness anchor, budget ordering, bounded timeout, prompt semantics) was validated with the suites below on images rebuilt from the final workspace. Details, commands and the acceptance matrix are in [T11 audit](t11-audit.md); the final cross-task ledger is in [T15 final review](t15-final-review.md).
 
 | Suite | Result | Evidence |
 |---|---|---|

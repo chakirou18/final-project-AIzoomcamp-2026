@@ -28,7 +28,6 @@ services:
     environment:
       FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
       FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:?}
-      FIELDOPS_PUBLIC_HTTPS: "true"
     ports: !override
       - "127.0.0.1:${FIELDOPS_PORT:?}:8000"
   worker:

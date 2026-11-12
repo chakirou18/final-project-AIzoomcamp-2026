@@ -52,8 +52,8 @@ Maps every functional (F01–F10) and non-functional (N01–N07) requirement fro
 | T11 | `feature/t11-oncall-agent` | `315b4491…` | [#25](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/25) → `feature/t10-alerting` | open, unmerged |
 | T12 | `feature/t12-ci-cd` | `04f3b497…`, `9e61a791…`, `51464b52…`, `07ea7b54…` | [#26](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/26) → `feature/t11-oncall-agent` | open, unmerged; real `pr-validation` runs: [43199314066](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43199314066) (lint, image, rules, PostgreSQL integration, Chromium passed; unit and security failed on a workflow env leak), [43200242540](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43200242540) (all seven jobs green after one Chromium failed-job rerun) |
 | T13 | `feature/t13-deployment` | `9f07bd5a…` | [#27](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/27) → `feature/t12-ci-cd` | open, unmerged; tooling only, no public deployment |
-| T14 | `feature/t14-evidence` | this branch | → `feature/t13-deployment` | documentation; no video |
-| T15 | `feature/t15-final-review` | next branch | → `feature/t14-evidence` | final review documents |
+| T14 | `feature/t14-evidence` | `7dfe09c2…` | [#28](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/28) → `feature/t13-deployment` | open, unmerged; documentation; no video |
+| T15 | `feature/t15-final-review` | see PR | → `feature/t14-evidence` | final review documents, edge-config correction |
 
 Issues #11 and #12 carry progress comments; no Issue is closed; no PR is merged.
 

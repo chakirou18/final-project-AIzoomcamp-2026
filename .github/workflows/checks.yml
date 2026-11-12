@@ -131,6 +131,9 @@ jobs:
           docker compose --profile observability run --rm --no-deps --entrypoint /bin/promtool prometheus check config /etc/prometheus/prometheus.yml
           docker compose --profile observability run --rm --no-deps --entrypoint /bin/promtool prometheus check rules /etc/prometheus/notification-rules.yml
           docker compose --profile observability run --rm --no-deps --entrypoint /bin/promtool prometheus test rules /etc/prometheus/notification-rules-tests.yml
+      - name: Validate the hosted HTTPS edge configuration (Caddy)
+        run: |
+          docker run --rm -e FIELDOPS_PUBLIC_HOST=fieldops.example.invalid -e FIELDOPS_ACME_EMAIL=ops@example.invalid             -v "$PWD/deploy/proxy/Caddyfile:/etc/caddy/Caddyfile:ro"             caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
       - name: amtool check-config
         run: docker compose --profile observability run --rm --no-deps --entrypoint /bin/amtool alertmanager check-config /etc/alertmanager/alertmanager.yml
 
