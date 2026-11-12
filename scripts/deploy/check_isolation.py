@@ -144,7 +144,16 @@ def main() -> int:
     dev = summarize(render("development", Path(args.development), image))
     prod = summarize(render("production", Path(args.production), image))
     problems = check(dev, prod)
-    report = {"development": dev, "production": prod, "problems": problems, "ok": not problems}
+    version = subprocess.run(
+        ["docker", "compose", "version", "--short"], capture_output=True, text=True, timeout=60
+    ).stdout.strip()
+    report = {
+        "compose_version": version,
+        "development": dev,
+        "production": prod,
+        "problems": problems,
+        "ok": not problems,
+    }
     if args.output:
         Path(args.output).write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps({"ok": report["ok"], "problems": problems}))
