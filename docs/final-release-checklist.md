@@ -49,3 +49,14 @@ Status as of the Claude handover session on 2026-11-11 (local, unpublished). Eac
 
 - [ ] Owner may repair the Ollama folder ACL (`icacls C:\Users\chaki\.ollama /grant "chaki:(OI)(CI)F" /T`) so the primary instance works; the second instance started by Claude on port 11435 was stopped by the host for memory pressure and holds no state.
 - [ ] The retained integration database container `fieldops-t11-test-db` can be stopped gracefully after review (volume retained; no deletion authorized).
+
+## Release readiness pass (2026-11-12)
+
+- [x] PR chain #16–#29 verified linear, conflict-free, MERGEABLE/CLEAN; merge plan in `docs/github-release-readiness.md`.
+- [x] Ruleset, environments, secrets and variables proposal prepared (not applied).
+- [x] Hosting options costed from verified sources; approval request in `docs/t13-hosting-proposal.md` (no spending).
+- [x] Private model runtime overlay and deploy.sh build fix; dry runs for both environments.
+- [x] README reviewer sections; recording package in `docs/demo-script.md` section 6.
+- [ ] Owner: approve and apply the integration merge, ruleset and environments.
+- [ ] Owner: choose hosting and a monthly ceiling; provide DNS; `az login` if Azure should be reconsidered.
+- [ ] Owner: record the video.

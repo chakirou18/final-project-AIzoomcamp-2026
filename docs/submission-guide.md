@@ -65,11 +65,12 @@ Latest fresh ledger and counts: [T15 final review](t15-final-review.md).
 ## CI/CD, deployment, rollback
 
 - Workflows: `.github/workflows/` ([T12 validation](t12-validation.md), [T12 audit](t12-audit.md)). Real PR validation runs exist for PR #26; the production promotion and development deployment jobs cannot run until branch protection, GitHub environments, secrets and hosting exist.
-- Deployment and rollback procedures: [T13 deployment](t13-deployment.md), [T13 rollback](t13-rollback.md), [T13 validation](t13-validation.md). **No public deployment exists.** No public URL is claimed.
+- Deployment and rollback procedures: [T13 deployment](t13-deployment.md), [T13 rollback](t13-rollback.md), [T13 validation](t13-validation.md), costed [hosting proposal](t13-hosting-proposal.md). **No public deployment exists.** No public URL is claimed.
+- Merge plan, ruleset and environment setup: [GitHub release readiness](github-release-readiness.md).
 
 ## Demo video
 
-**Not recorded.** The timestamped recording plan and narration are in [demo-script.md](demo-script.md) section 5.
+**Not recorded.** The timestamped script, recording checklist and secret-hygiene steps are in [demo-script.md](demo-script.md) sections 5–6.
 
 ## Known limitations
 

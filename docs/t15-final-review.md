@@ -51,7 +51,12 @@ Fresh runs are dated. Runs from 2026-11-11 were executed on images rebuilt from 
 | MEDIUM | The T13 Caddyfile used `exclude request>headers>…` inside `log`; Caddy's `exclude` takes logger names, so the edge could refuse to start. | Replaced with a `format filter` that deletes the Cookie and Authorization fields; CI now runs `caddy validate` with the pinned image in the rules job (this PR). |
 | LOW | `FIELDOPS_PUBLIC_HTTPS` in the hosted override was a no-op, and the T13 document claimed it controlled Secure cookies. | Removed; documentation now states the real control: cookies are Secure whenever the environment is not `local` (`fieldops/auth.py`). |
 
-No critical or high defect is open.
+| HIGH | `deploy.sh` pulled images and then ran `up --no-build`. The seven observability services are built locally from digest-pinned vendor images, so the first release on a fresh host would have failed. | `deploy.sh` now runs `pull --ignore-buildable`, then `build`, before `up`. Found by rendering the full hosted stack. |
+| MEDIUM | There was no way to give hosted environments a real model without exposing Ollama. | Added `docker-compose.model.yml`: a private Ollama runtime on an internal network with no published port. `docker-compose.model-client.yml` attaches only the agent. `deploy.sh` applies the overlays and refuses to release without the network. |
+| MEDIUM | The README lacked CI/CD, deployment, security, limitations and evidence sections, and its status line was stale. | Sections added, status updated. |
+| LOW | Earlier documents said Azure was "signed in". The cached token had expired after 90 days of inactivity. | Corrected in the hosting proposal; Azure inventory requires the owner to run `az login`. |
+
+No critical or high defect is open; the high-severity deployment defect above is fixed and verified by dry run.
 
 ## GitHub publication state
 
@@ -68,6 +73,18 @@ All PRs open and unmerged; Issues #11–#15 open; no deployment.
 ## Security scan of the release set
 
 `scripts/ci/secret_scan.py` over all tracked files: 0 findings. Six live runtime credential values were absent from the T11 publication set; environment templates contain placeholders only; evidence directories under `artifacts/` are git-ignored and were not published; no personal data beyond the owner's public GitHub handle appears in the documentation.
+
+## Release readiness additions (2026-11-12, later pass)
+
+- [GitHub release readiness](github-release-readiness.md) documents the merge plan:
+  - The chain is linear, conflict-free and `MERGEABLE`/`CLEAN` from T01 to T15.
+  - The recommended path is one merge-commit integration PR `feature/t15-final-review` → `main`; never squash or rebase the chain.
+  - It also contains a ruleset proposal (seven required checks, no force-push, no deletion, PR required) and the environment and secret setup commands.
+- [T13 hosting proposal](t13-hosting-proposal.md) gives verified prices:
+  - The full target, two environments plus the private model, needs about 8 GB and 4 vCPU. It cannot run for €5/month.
+  - Recommended: Hetzner CX33, €8.99/month excl. VAT, currently listed unavailable. Available fallback: CPX32 Helsinki, €30.49.
+  - Azure costs more for the same capacity.
+- Today's local reruns: unit tests 207 passed; isolation render ok; Compose config ok for all profiles; full hosted-stack render with both overlays; `deploy.sh` dry runs for both environments. Docker-backed suites were not rerun because the Docker engine was stopped.
 
 ## Remaining risks and blocked evidence
 
