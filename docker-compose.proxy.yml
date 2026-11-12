@@ -1,0 +1,52 @@
+# Public HTTPS edge for one hosted environment. Adds a Caddy reverse proxy that terminates TLS
+# (automatic certificates for FIELDOPS_PUBLIC_HOST) and forwards only the public application
+# paths to the loopback-bound web service. Internal paths, metrics, Grafana, Jaeger, Loki,
+# Prometheus, Alertmanager, PostgreSQL and the agent are never published.
+#
+#   docker compose --env-file deploy/environments/<env>.env \
+#     -f docker-compose.yml -f docker-compose.deploy.yml -f docker-compose.proxy.yml \
+#     --profile observability --profile incident up -d --wait
+#
+# Each environment runs its own proxy instance with its own hostname; two environments on one
+# host need distinct FIELDOPS_PUBLIC_HOST values and distinct FIELDOPS_PROXY_HTTP/HTTPS ports
+# (or a single shared edge proxy outside Compose, which is the documented alternative).
+
+services:
+  proxy:
+    image: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+    environment:
+      FIELDOPS_PUBLIC_HOST: ${FIELDOPS_PUBLIC_HOST:?public hostname required}
+      FIELDOPS_ACME_EMAIL: ${FIELDOPS_ACME_EMAIL:?certificate contact email required}
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    volumes:
+      - ./deploy/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - proxy_data:/data
+      - proxy_config:/config
+    ports:
+      - "${FIELDOPS_PROXY_HTTP:-80}:80"
+      - "${FIELDOPS_PROXY_HTTPS:-443}:443"
+    depends_on:
+      web:
+        condition: service_healthy
+    mem_limit: 128m
+    cpus: 0.5
+    read_only: true
+    tmpfs: [/tmp:size=16m]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  proxy_data:
+  proxy_config:

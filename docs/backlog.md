@@ -42,7 +42,7 @@ Verified 2026-11-09: 15 unique OPEN Issues in the public repository, with exact 
 | T10 | [#10](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/10) | OPEN — implemented locally, owner review pending |
 | T11 | [#11](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/11) | OPEN - independently audited locally; real-model acceptance PASSED (local Ollama); publication awaits owner review |
 | T12 | [#12](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/12) | OPEN — workflows, gates and scripts implemented and verified locally; remote CI/CD acceptance blocked (no push/hosting authorized) |
-| T13 | [#13](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/13) | OPEN — locally prepared, not yet published; remote acceptance blocked (no hosting) |
+| T13 | [#13](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/13) | OPEN — deployment tooling, HTTPS edge and rollback/backup/exposure/capacity scripts implemented and dry-run locally; public deployment and remote acceptance blocked (no approved hosting) |
 | T14 | [#14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14) | OPEN — not started |
 | T15 | [#15](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/15) | OPEN — not started |
 
