@@ -2,7 +2,7 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T11 passed an independent audit on published T10 7b6889c (PR #24 open), including a genuine real-model recovery with the owner's existing local Ollama `llama3.2:3b` at zero cost. T12 CI/CD workflows are implemented and audited locally (see [T12 validation](docs/t12-validation.md)); T13 deployment procedures are locally prepared, not yet published; remote CI, hosting and deployment remain unauthorized. See [T11 audit](docs/t11-audit.md).**
+**Status: T11 passed an independent audit on published T10 7b6889c (PR #24 open), including a genuine real-model recovery with the owner's existing local Ollama `llama3.2:3b` at zero cost. T12 CI/CD workflows are implemented and audited locally (see [T12 validation](docs/t12-validation.md)); T13 deployment tooling (digest-pinned hosted override, Caddy HTTPS edge, release/rollback/backup/exposure/capacity scripts) is implemented and dry-run locally (see [T13 validation](docs/t13-validation.md)); no public deployment exists and hosting remains unauthorized. See [T11 audit](docs/t11-audit.md).**
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
