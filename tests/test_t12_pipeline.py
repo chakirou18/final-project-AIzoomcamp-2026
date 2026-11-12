@@ -65,9 +65,9 @@ def test_rollback_gate_requires_a_previous_production_success():
 def test_secret_scan_flags_credentials_and_allows_documented_synthetic_values(tmp_path):
     leaked = tmp_path / "leaked.txt"
     leaked.write_text(
-        "AWS_KEY=AKIAABCDEFGHIJKLMNOP\n"
-        "-----BEGIN OPENSSH PRIVATE KEY-----\n"
-        'token = "ghp_0123456789abcdefghijklmnopqrstuvwxyz0123"\n',
+        "AWS_KEY=AKIAABCDEFGHIJKLMNOP\n"  # synthetic
+        "-----BEGIN OPENSSH PRIVATE KEY-----\n"  # synthetic
+        'token = "ghp_0123456789abcdefghijklmnopqrstuvwxyz0123"\n',  # synthetic
         encoding="utf-8",
     )
     synthetic = tmp_path / "synthetic.txt"
