@@ -56,7 +56,7 @@ Rendered locally with `docker compose -f docker-compose.yml -f docker-compose.de
 
 ## Public exposure
 
-The reverse proxy forwards `https://<host>/` to `127.0.0.1:<FIELDOPS_PORT>` and must deny `/metrics`, `/internal/*`, Grafana and Jaeger (loopback ports only, reachable through SSH tunnels). `FIELDOPS_PUBLIC_HTTPS=true` marks session cookies `Secure`; cookies are already `HttpOnly` and `SameSite=Lax`. The smoke script asserts readiness, cookie flags and that the private paths are denied through the public origin.
+The reverse proxy forwards `https://<host>/` to `127.0.0.1:<FIELDOPS_PORT>` and must deny `/metrics`, `/internal/*`, Grafana and Jaeger (loopback ports only, reachable through SSH tunnels). Session cookies are `Secure` automatically whenever `FIELDOPS_ENVIRONMENT` is not `local` (enforced in `fieldops/auth.py`), and always `HttpOnly` and `SameSite=Lax`. The smoke script asserts readiness, cookie flags and that the private paths are denied through the public origin.
 
 ## Release flow
 

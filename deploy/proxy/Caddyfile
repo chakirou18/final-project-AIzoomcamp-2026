@@ -39,8 +39,13 @@
 
 	log {
 		output stdout
-		format json
-		# Never log cookies or authorization headers.
-		exclude request>headers>Cookie request>headers>Authorization
+		# Never log cookies or authorization headers (Caddy also redacts them by default).
+		format filter {
+			wrap json
+			fields {
+				request>headers>Cookie delete
+				request>headers>Authorization delete
+			}
+		}
 	}
 }

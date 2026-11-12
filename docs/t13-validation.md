@@ -32,6 +32,12 @@ Task is [Issue #13](https://github.com/chakirou18/final-project-AIzoomcamp-2026/
 | Concurrent environments within measured resources | BLOCKED (no host) |
 | No destructive restore without approval | By design: no restore path exists in the workflows |
 
+## Hosting proposal and private model runtime (2026-11-12, later pass)
+
+`docker-compose.model.yml` defines a private Ollama runtime (digest-pinned 0.40.16, the version validated in T11). It runs as its own Compose project on an internal network with no published port. `docker-compose.model-client.yml` attaches only `oncall-agent` to that network. `deploy.sh` now applies the edge and model overlays when configured, refuses to release if the model network is missing, and builds the seven observability probe images on the host.
+
+That last change fixes a real defect: the previous `pull` followed by `up --no-build` would have failed on a fresh host, because those images exist only after a local build. Rendering confirmed the result: Ollama has no published port and sits on the internal `fieldops-model` network; only the agent joins it; and only the proxy publishes 80/443. Dry runs for both environments report both overlays. The costed hosting proposal and approval request are in [T13 hosting proposal](t13-hosting-proposal.md): the full target does not fit €5/month, and the lowest full-target option is Hetzner CX33 at €8.99/month excl. VAT, currently listed unavailable. The Azure CLI token had expired, so Azure resources could not be inventoried.
+
 ## Session note (2026-11-12)
 
 The Docker Desktop engine was stopped when this validation pass ran and the owner's policy forbids restarting it; every Docker-backed local check listed as "not executed" is therefore BLOCKED on an owner action, not failed. An enabled Azure subscription exists on the development machine and is the candidate hosting path; using it needs explicit approval because it costs money. See the hosting evaluation in [T13 deployment](t13-deployment.md).

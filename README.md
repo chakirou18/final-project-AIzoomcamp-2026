@@ -2,7 +2,9 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status: T11 passed an independent audit on published T10 7b6889c (PR #24 open), including a genuine real-model recovery with the owner's existing local Ollama `llama3.2:3b` at zero cost. T12 CI/CD workflows are implemented and audited locally (see [T12 validation](docs/t12-validation.md)); T13 deployment tooling (digest-pinned hosted override, Caddy HTTPS edge, release/rollback/backup/exposure/capacity scripts) is implemented and dry-run locally (see [T13 validation](docs/t13-validation.md)); no public deployment exists and hosting remains unauthorized. See [T11 audit](docs/t11-audit.md).**
+**Status (2026-11-12): T01–T15 are implemented and published as a stacked chain of feature PRs (#16–#29, open, unmerged). All seven CI checks pass on GitHub for T12–T15. The On-Call agent recovered a real incident with the owner's local Ollama `llama3.2:3b`. No public deployment and no demo video exist yet; see [Submission guide](docs/submission-guide.md) and [T15 final review](docs/t15-final-review.md). Verdict: LOCALLY COMPLETE — EXTERNAL ACCEPTANCE PENDING.**
+
+Reviewers start here: [Submission guide](docs/submission-guide.md) · [Evidence index](docs/evidence-index.md) · [Demo script](docs/demo-script.md)
 
 Small maintenance companies need to register jobs, assign technicians and track work through closure. Missed assignment notifications delay real work even when the application appears healthy. FieldOps makes both intervention progress and notification delivery visible.
 
@@ -198,3 +200,55 @@ Live `/docs` describes implemented versioned intervention routes. GET `/contract
 Authenticated technicians use GET `/api/v1/notifications` and POST `/api/v1/notifications/{id}/read` (session plus CSRF). Historical assignments retain an immutable ID/version summary but do not grant access to reassigned jobs. The worker has no exposed port or HTTP health endpoint; process startup is not proof of inbox delivery. T07 adds database-backed controls/heartbeat; T09 adds tracing/exporters and telemetry services. T10 adds alert rules and a private test receiver; T11 agent work remains deferred.
 
 [Issue #5 implementation evidence](docs/t06-validation.md) records PostgreSQL concurrency/crash tests, Docker outage/restart checks, benchmark measurements and limitations. Never delete existing volumes to run tests.
+
+## AI agent behavior
+
+An Alertmanager webhook creates a durable incident. The agent collects fixed, bounded telemetry and asks the model for one schema-validated diagnosis. A deterministic policy, not the model, decides whether recovery is allowed. An operator must then grant that specific incident and pause generation. The agent performs a single allowlisted `resume_notification_worker` with a stable idempotency key. It resolves the incident only after the affected outbox events show delivered inbox rows across two healthy samples. Log text never reaches the prompt, and the model cannot choose tools, URLs, SQL or shell commands. Details: [T11 validation](docs/t11-validation.md), [T11 audit](docs/t11-audit.md).
+
+## CI/CD
+
+`.github/workflows/` holds five workflows:
+
+- reusable PR checks: lint, unit tests, PostgreSQL integration with a mock model, dependency audit, rules, Chromium and image build;
+- PR validation;
+- validated-main release, which publishes an immutable GHCR digest and deploys development automatically;
+- manual production promotion of a development-tested digest behind a required-reviewer environment;
+- manual rollback.
+
+PR checks have run for real on PRs #26–#29. Main-branch deployment, environments and branch protection await owner configuration. See [T12 validation](docs/t12-validation.md) and [GitHub release readiness](docs/github-release-readiness.md).
+
+## Deployment
+
+The hosting kit includes:
+
+- a digest-pinned hosted override and a Caddy HTTPS edge;
+- a private model runtime on an internal network;
+- release, backup-verification, exposure and capacity scripts.
+
+The full target is development and production side by side plus the model. It needs about 8 GB RAM and 4 vCPU, so it does not fit a €5/month server; the costed proposal is in [T13 hosting proposal](docs/t13-hosting-proposal.md). **No public URL exists yet.** See [T13 deployment](docs/t13-deployment.md) and [T13 rollback](docs/t13-rollback.md).
+
+## Security
+
+- **Synthetic data only.** Demo personas are synthetic; the operator persona needs a locally generated secret.
+- **Session protection.** Sessions use signed HttpOnly cookies, which are Secure outside `local`. CSRF protection applies to every mutation, and roles are checked server-side.
+- **Private surfaces.** Metrics, controls, internal and agent endpoints are private.
+- **Secret handling.** CI pins actions by SHA and passes secrets only through `env:`. A secret scan runs on every PR.
+- **Agent isolation.** The agent's database role cannot read business tables or modify grants, and the agent has no shell or Docker socket.
+
+## Known limitations
+
+- **Local only.** Hosting, the production approval record and a rollback rehearsal are pending owner approval.
+- **No video.** The demo video is not recorded yet.
+- **Weak model.** The 3B model is advisory and unreliable on counterfactual evidence; the policy compensates.
+- **CPU inference.** Inference must run on CPU on the development machine, because structured output crashed its GPU backend.
+- **Untested cases.** Five worker-stop cases and one database-deletion assertion are not executed, under the data-preservation rule.
+
+## Evidence and submission
+
+- [Submission guide](docs/submission-guide.md)
+- [Evidence index (F01–F10, N01–N07)](docs/evidence-index.md)
+- [Rubric evidence (24-point mapping)](docs/rubric-evidence.md)
+- [T15 final review](docs/t15-final-review.md)
+- [Final release checklist](docs/final-release-checklist.md)
+
+There is no demo video link and no public demo URL yet; both will be added only once they exist.

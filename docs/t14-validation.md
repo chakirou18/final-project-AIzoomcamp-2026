@@ -13,7 +13,7 @@ Task is [Issue #14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/
 | Test reports | JUnit files under `artifacts/` and `artifacts/claude/` | Listed in [t15-final-review.md](t15-final-review.md) |
 | CI/CD evidence | [t12-validation.md](t12-validation.md): actionlint, isolation, gate tests, real `pr-validation` runs on PR #26 | PR checks ACTUAL; deployment runs BLOCKED |
 | Deployment and rollback evidence | [t13-validation.md](t13-validation.md): dry runs | Local only; remote BLOCKED |
-| Video storyboard and narration | demo-script.md section 5 | Plan only; **no recording** |
+| Video storyboard and narration | demo-script.md sections 5–6 (timestamped script, pre-recording checklist, secret-hygiene rules, post-recording steps) | Plan only; **no recording** (owner action) |
 | Requirement-to-evidence mapping (F01–F10, N01–N07) | [evidence-index.md](evidence-index.md) | Complete; blocked items stated |
 | Rubric status | [rubric-evidence.md](rubric-evidence.md) retained; 24-point mapping preserved, 41-point alternative kept separate | Unchanged |
 | Submission checklist | [final-release-checklist.md](final-release-checklist.md) | Written |

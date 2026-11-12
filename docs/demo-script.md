@@ -60,3 +60,35 @@ Negative demonstrations (no model spend): revoke the grant or change the generat
 6. 4:00 Point at tests and evidence index; state the limitations (local hosting, advisory model, no remote CI run yet).
 
 Narration must say "synthetic data", "local demonstration" and "the policy, not the model, authorizes the action".
+
+## 6. Recording package for the owner (prepared 2026-11-12; no recording exists)
+
+Claude Code cannot record the screen in this setup, so the recording is an owner action. The sequence below reproduces the verified local run.
+
+### Before recording (about 15 minutes)
+
+1. Start Docker Desktop. Check at least 6 GB of free RAM, then start the full stack: `docker compose --profile observability --profile incident up --build --wait`.
+2. Start the model runtime used for T11 and set the provider variables from section 0. Run one pre-flight call before recording; the incident will make exactly one more call.
+3. Close every application except the browser and a terminal. Set the screen to 1920×1080 and turn notifications off.
+4. Open these browser tabs in order: application `/session`, Grafana dashboard, Alertmanager (through `docker compose exec` or a Grafana alert view), Jaeger, and the incident API `/api/v1/incidents`.
+5. Copy the operator secret into the login form with the clipboard, never on camera: `docker compose exec -T web cat /run/fieldops-controls/operator_key`. Do not show `.env` files, credential volumes, cookies or developer-tools storage.
+
+### Timestamped script (target 5 minutes)
+
+| Time | Screen | Narration (summary) |
+|---|---|---|
+| 0:00–0:20 | Title slide or README | "FieldOps: intervention management with a safe, model-assisted on-call agent. Synthetic data, local demo." |
+| 0:20–0:50 | Architecture diagram (`docs/architecture.md`) | web, worker, PostgreSQL outbox and inbox, Prometheus to Alertmanager to the agent, operator grant |
+| 0:50–1:30 | Dispatcher login, create and assign a job | "Every assignment writes history and exactly one outbox event in the same transaction." |
+| 1:30–1:55 | Technician login, inbox, start the job | the notification arrives in about 2 s; the technician starts work |
+| 1:55–2:20 | Operator dashboard: pause delivery, assign a second job | "Delivery is paused on purpose; the queue age grows." |
+| 2:20–3:00 | Grafana delayed panel, then Alertmanager firing (after about 100 s; cut the wait) | the alert fires inside the 110 s requirement |
+| 3:00–3:35 | `/api/v1/incidents/{id}`: `model_intent` (provider `ollama`, model `llama3.2:3b`), diagnosis JSON | "The model only proposes. The policy decides; the model cannot pick tools." |
+| 3:35–4:05 | Operator authorizes the incident, then the events show the action and verification samples | one allowlisted resume, stable key, two healthy samples |
+| 4:05–4:25 | Technician inbox shows the delayed notification; incident shows RESOLVED | resolution requires real delivery evidence |
+| 4:25–4:45 | Jaeger trace, then GitHub PR checks (#26–#29 green) | tracing and CI evidence |
+| 4:45–5:00 | Limitations and links | local deployment, hosting pending, evidence index |
+
+### After recording
+
+Watch the whole file for secrets, cookies, tokens and personal information. Upload it unlisted, then add the link to the README "Evidence and submission" section and to `docs/evidence-index.md`. Until then, every document says that no video exists.
