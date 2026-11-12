@@ -24,6 +24,10 @@ Branch created locally from T11 `315b4491e40a19f52ae4ec06dc4de4877792cda4`; the 
 
 No critical or high finding. The gate rejects tags, branches, malformed and never-deployed digests before any host access; secrets are reachable only inside environment-scoped jobs; both deployment workflows are serialized by concurrency group and the development job skips stale commits.
 
+## Remote evidence update (2026-11-12)
+
+The PR validation workflow executed for real on PR #26 (runs 43199177767, 43199314066, 43200242540). The first two runs exposed three defects that local checks had not: the scanner-fixture lint failure, the workflow-level database variables leaking into the unit job and the isolation render, and the anchored `build: !reset null` being ignored by the runner's Compose. All three are fixed (`9e61a79`, `51464b5`) and the corresponding jobs pass remotely. One Chromium case failed once with a Playwright protocol error on the hosted runner and passed on the failed-job rerun (attempt 2) without changing any assertion; all seven PR checks are green on `51464b5`. See [T12 validation](t12-validation.md) for the run table.
+
 ## Verdict
 
 **CONDITIONAL GO to publish the pipeline configuration with T11/T12 once the owner authorizes the push; NO-GO for Issue #12 acceptance** until a real PR run, an automatic main→development deployment run, a blocked production gate and a failed-check denial are observed remotely. The local evidence demonstrates correctness of the configuration, scripts and gates, not the remote behaviour.

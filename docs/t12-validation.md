@@ -68,18 +68,30 @@ docker build --target runtime --tag fieldops-ci:local . ; docker run --rm fieldo
 
 On resume the Docker Desktop engine and WSL were found stopped and the owner's policy forbids restarting them without approval. Two local gates therefore remain **NOT EXECUTED**: the promtool/amtool rules-job commands (their rule files are unchanged since T10 and passed 27 promtool assertions there) and the host-side rerun of the CI integration job (175 of the 284 cases had passed with no failure before the earlier interruption; the same 284 passed inside the containerized runner on 2026-11-11). The smoke script was not modified after its last local pass, so that evidence stands. These gates are recorded as **BLOCKED (Docker engine stopped)**, not as failures, and must be rerun before Issue #12 acceptance.
 
+## Real GitHub Actions evidence (PR #26, 2026-11-12)
+
+Opening PR #26 against `feature/t11-oncall-agent` (a `feature/**` base) triggered the `pr-validation` workflow for real. These are genuine hosted runs, not local simulations.
+
+| Run | Commit | Outcome |
+|---|---|---|
+| [43199177767](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43199177767) | `04f3b49` | lint **failed** on the scanner's own test fixtures (defect caught by the pre-publication scan, fixed in `9e61a79`); remaining jobs cancelled by the superseding run |
+| [43199314066](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43199314066) | `9e61a79` | lint, image, Prometheus/Alertmanager rules, PostgreSQL integration (284 cases on the hosted service) and Chromium (18 cases) **passed**; unit and security **failed** because workflow-level database variables leaked into every job (unit fixture tried to reach PostgreSQL; `FIELDOPS_ENVIRONMENT=local` overrode the environment files) and the anchored `build: !reset null` was ignored by the runner's Compose |
+| [43200242540](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43200242540) | `51464b5` | attempt 1: lint, unit, PostgreSQL integration, dependency audit + isolation, rules, image **passed**; Chromium **failed** one mobile JS-disabled case (`Page.reload: Not attached to an active page`, 17 passed) — runner-side Playwright instability; attempt 2 (failed-job rerun, no test change): Chromium **passed** — all seven jobs green |
+
+What these runs prove: the PR gate executes automatically on GitHub-hosted runners with pinned actions and no secrets; the mock-model unit and real-PostgreSQL integration suites, the dependency audit, the rule tests, the isolation render and the image build pass remotely. What they do not prove: merge blocking (no branch protection yet), the main→development automatic deployment, digest publication, the production approval gate or any hosted smoke — those remain BLOCKED.
+
 ## Tests required by Issue #12 and their status
 
 | Required test | Status |
 |---|---|
-| PR passing/failing gates | Workflow syntax validated by actionlint; the gate's jobs are the same commands run locally in T11 (unit, integration, browser, promtool). Remote pass/fail evidence BLOCKED (no push authorized). |
+| PR passing/failing gates | **ACTUAL**: three real `pr-validation` runs on PR #26 show failing gates (lint on `04f3b49`, unit/security on `9e61a79`) and passing gates on `51464b5`. Merge blocking itself needs branch protection (owner setting) — BLOCKED. |
 | Merge-to-main automatic development deployment with API→inbox smoke | Workflow and smoke script implemented; smoke exercised locally; remote run BLOCKED (no hosting). |
 | Rendered development/production DSN/volume separation | PASS locally (`check_isolation.py`, `test_hosted_environments_render_isolated_and_digest_pinned`). |
 | Unknown/failed-development digest promotion rejection | PASS locally (`test_only_a_successful_development_tested_digest_is_promotable`, `test_tags_branches_and_malformed_digests_are_rejected`). |
 | Manual approval enforcement | Implemented through the `production` environment; the reviewer policy is a repository setting the owner must configure; remote evidence BLOCKED. |
 | Stale-run prevention | Implemented (`origin/main` head comparison before release); remote evidence BLOCKED. |
 | Mock model in CI; no production pause | Integration/unit jobs use the deterministic providers; smoke never pauses. |
-| Rules job (promtool/amtool) and host-side integration rerun | BLOCKED locally (Docker engine stopped on 2026-11-12; not restarted without approval). |
+| Rules job (promtool/amtool) and integration job | **ACTUAL** on GitHub (runs 43199314066 and 43200242540: both jobs pass); local reruns remain blocked by the stopped Docker engine. |
 
 ## Owner decisions and prerequisites
 
