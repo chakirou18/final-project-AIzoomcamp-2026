@@ -1,6 +1,6 @@
 # T14 demonstration and evidence package: local validation
 
-Task is [Issue #14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14). Its dependency T13 is **not accepted** (no hosting), so T14 can only deliver the reproducible walkthrough, the recorded local incident evidence, the requirement-to-evidence mapping and the submission checklist. **No video was recorded.** CI/deploy links do not exist and are not claimed.
+Task is [Issue #14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14). Its dependency T13 is **not accepted** (no hosting), so T14 can only deliver the reproducible walkthrough, the recorded local incident evidence, the requirement-to-evidence mapping and the submission checklist. A demo video is published (release v1.0.0-demo; see the table below). CI links exist (GitHub Actions runs on PRs #26–#33 and on `main`); deployment links do not exist and are not claimed.
 
 ## Delivered
 

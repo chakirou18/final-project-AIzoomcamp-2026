@@ -64,7 +64,7 @@ Latest fresh ledger and counts: [T15 final review](t15-final-review.md).
 
 ## CI/CD, deployment, rollback
 
-- Workflows: `.github/workflows/` ([T12 validation](t12-validation.md), [T12 audit](t12-audit.md)). Real PR validation runs exist for PR #26; the production promotion and development deployment jobs cannot run until branch protection, GitHub environments, secrets and hosting exist.
+- Workflows: `.github/workflows/` ([T12 validation](t12-validation.md), [T12 audit](t12-audit.md)). CI runs automatically on every PR (#26–#33) and ran on the `main` merges ([Actions](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions)); `main-release` published an image digest. The development deployment, production promotion and rollback jobs cannot run until GitHub environments, secrets and hosting exist; branch protection is also not configured.
 - Deployment and rollback procedures: [T13 deployment](t13-deployment.md), [T13 rollback](t13-rollback.md), [T13 validation](t13-validation.md), costed [hosting proposal](t13-hosting-proposal.md). **No permanent hosting or automatic deployment exists.** The only public URL is the temporary Quick Tunnel above.
 - Merge plan, ruleset and environment setup: [GitHub release readiness](github-release-readiness.md).
 
@@ -91,7 +91,11 @@ It shows the FieldOps web interface, intervention creation and tracking, the Gra
 
 ## Known limitations
 
-Local hosting only; the 3B model is advisory and unreliable on counterfactuals (the deterministic policy decides); CPU inference required on this GPU; five worker-stop cases and one database-deletion assertion are unexecuted under the data-preservation rule; remote CI/CD acceptance, hosting, production approval, rollback rehearsal and the video are pending owner actions.
+- **No permanent hosting.** The public demo is a temporary Quick Tunnel from the owner's machine, with no uptime guarantee.
+- **No automatic deployment.** CI runs automatically on every PR and on `main`, and `main-release` publishes an image digest. The development and production deployment jobs are not enabled, so no automatic deployment, production approval or rollback rehearsal has run.
+- **Video scope.** The published video does not show a live On-Call agent run or a new live alert; that evidence is the recorded local T11 run.
+- **Model.** The 3B model is advisory and unreliable on counterfactual evidence; the deterministic policy decides. CPU inference is required on the development machine's GPU.
+- **Untested cases.** Five worker-stop cases and one database-deletion assertion are unexecuted under the data-preservation rule.
 
 ## Links for submission
 
