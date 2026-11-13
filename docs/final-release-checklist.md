@@ -21,11 +21,14 @@ Status as of the Claude handover session on 2026-11-11 (local, unpublished). Eac
 - [x] Owner confirmed the local Ollama/llama3.2 provider as the approved existing provider (2026-11-11).
 - [ ] Owner decides whether further real calls are permitted (`FIELDOPS_ONCALL_MAX_CALLS` is 1 and consumed in the synthetic database).
 
-## Publication (requires explicit owner authorization; none performed)
+## Publication
 
 - [x] T11 committed (`315b449`), pushed, PR #25 → `feature/t10-alerting`, Issue #11 progress comment (2026-11-11).
 - [x] T13 PR #27, T14 PR #28 published after local review; T15 PR from `feature/t15-final-review`.
-- [ ] No merge, no deployment.
+- [x] T01–T15 merged into `main` by the owner via PR #30 (2026-11-13); public-demo boundary merged via PR #31.
+- [x] `main-release` ran on the merge: checks passed and an image digest was published; development deployment skipped (not enabled).
+- [x] Temporary public demo opened by the owner through a Cloudflare Quick Tunnel (https://assume-vbulletin-charming-fallen.trycloudflare.com); 37/37 checks passed through the public URL. Not permanent hosting; no uptime guarantee.
+- [ ] Permanent hosting, GitHub environments, branch protection and an automatic development deployment (not done).
 
 ## CI/CD and hosting (T12/T13) — remote deployment BLOCKED
 

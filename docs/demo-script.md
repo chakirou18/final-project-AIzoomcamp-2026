@@ -2,6 +2,10 @@
 
 A reproducible, local, synthetic-data walkthrough of the complete FieldOps journey: dispatcher assignment, technician inbox, operator dashboard, a real delivery delay alert, a genuine model-assisted diagnosis, an operator-approved allowlisted recovery and verified delivery. Every step names the command, the expected observation and the evidence it produced in the recorded run. **A demo video is published as [release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo)** (1 min 33 s). It covers the FieldOps web interface, intervention creation and tracking, the Grafana monitoring dashboards, and previously validated delayed-notification alerting test evidence. The full live incident sequence in section 3 (real alert, model diagnosis, operator grant, recovery) is documented from the recorded T11 run and is not part of that video.; the storyboard at the end is the narration plan for one.
 
+## Public walkthrough option (temporary)
+
+Reviewers without a local stack can follow section 1 (dispatcher and technician journey) on the temporary public demo [https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com), a temporary Cloudflare Quick Tunnel opened on 2026-11-13 from the owner's machine; it is available only while that machine and tunnel run, the URL changes if the tunnel restarts, and there is no uptime guarantee. Use the access code the owner shares privately. Sections 2–3 (operator dashboard, pause, alert, On-Call agent) are local-only by design and hidden in the public demo; their evidence is the [demo video](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) (Grafana and previously validated alerting evidence) and the recorded local T11 agent run.
+
 ## 0. Prerequisites (5 minutes)
 
 - Docker Desktop (Linux containers), Compose v2, Python 3.12 with uv for host-side tests.

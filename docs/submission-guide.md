@@ -65,8 +65,23 @@ Latest fresh ledger and counts: [T15 final review](t15-final-review.md).
 ## CI/CD, deployment, rollback
 
 - Workflows: `.github/workflows/` ([T12 validation](t12-validation.md), [T12 audit](t12-audit.md)). Real PR validation runs exist for PR #26; the production promotion and development deployment jobs cannot run until branch protection, GitHub environments, secrets and hosting exist.
-- Deployment and rollback procedures: [T13 deployment](t13-deployment.md), [T13 rollback](t13-rollback.md), [T13 validation](t13-validation.md), costed [hosting proposal](t13-hosting-proposal.md). **No public deployment exists.** No public URL is claimed.
+- Deployment and rollback procedures: [T13 deployment](t13-deployment.md), [T13 rollback](t13-rollback.md), [T13 validation](t13-validation.md), costed [hosting proposal](t13-hosting-proposal.md). **No permanent hosting or automatic deployment exists.** The only public URL is the temporary Quick Tunnel above.
 - Merge plan, ruleset and environment setup: [GitHub release readiness](github-release-readiness.md).
+
+## Temporary public demo
+
+[https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com): a temporary Cloudflare Quick Tunnel opened on 2026-11-13 from the owner's machine; it is available only while that machine and tunnel run, the URL changes if the tunnel restarts, and there is no uptime guarantee. Ask the owner for the access code, which is never published. Sign in with user `demo` and that code, then use the synthetic dispatcher (create and assign) and technician (inbox, start, complete) personas. Operator pages, metrics, internal APIs, fault simulation and the On-Call incident API are intentionally hidden. Details: [public-demo.md](public-demo.md).
+
+## What is demonstrated where
+
+| What | Where | Nature |
+|---|---|---|
+| Live application (web interface, interventions, assignment, technician inbox) | Temporary public demo [https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com), access code required | **Live**, but only while the Quick Tunnel runs |
+| Monitoring and alerting | [Demo video](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) (Grafana dashboards, previously validated alerting test evidence) | **Recorded**; not a new live alert |
+| On-Call agent (real alert, real `llama3.2:3b` diagnosis, operator grant, recovery, verified delivery) | Local tests and the recorded T11 run: [T11 audit](t11-audit.md), `agent_tests/` | **Local test evidence**; not shown in the video, not available in the public demo |
+| Public hosting | Cloudflare Quick Tunnel to the isolated `fieldops-public-demo` project | **Temporary**; not a hosted deployment |
+| Continuous integration | GitHub Actions `pr-validation` and `main-release` checks (seven jobs) | **Automatic** on every PR and push to `main` |
+| Deployment automation | `main-release` publishes an image digest; development/production deploy jobs exist but are **not enabled** (no hosting, environments or secrets) | **Not active**; no automatic CD deployment has run |
 
 ## Demo video
 
@@ -82,7 +97,8 @@ Local hosting only; the 3B model is advisory and unreliable on counterfactuals (
 
 - Repository: https://github.com/chakirou18/final-project-AIzoomcamp-2026
 - Demo video: https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo
-- Pull requests: #21–#26 (feature chain T07→T12), see [evidence index](evidence-index.md)
+- Temporary public demo: https://assume-vbulletin-charming-fallen.trycloudflare.com (access code required; Quick Tunnel, no uptime guarantee)
+- Pull requests: #16–#29 feature chain T02→T15, merged into `main` via #30; public demo via #31 (merged); see [evidence index](evidence-index.md)
 - Issues: #1–#15 public tracker
 - Evidence index and rubric mapping: [evidence-index.md](evidence-index.md)
 - Final review and checklist: [t15-final-review.md](t15-final-review.md), [final-release-checklist.md](final-release-checklist.md)

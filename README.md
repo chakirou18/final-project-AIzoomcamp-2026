@@ -2,9 +2,22 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status (2026-11-13): T01–T15 are implemented and merged into `main` via PR #30; all seven CI checks pass on GitHub, and the main-release workflow published an immutable image digest (development deployment not enabled). The On-Call agent recovered a real incident with the owner's local Ollama `llama3.2:3b`. The demo video is published; no public deployment exists yet; see [Submission guide](docs/submission-guide.md) and [T15 final review](docs/t15-final-review.md). Verdict: LOCALLY COMPLETE — EXTERNAL ACCEPTANCE PENDING.**
+**Status (2026-11-13): T01–T15 are implemented and merged into `main` via PR #30; all seven CI checks pass on GitHub, and the main-release workflow published an immutable image digest (development deployment not enabled). The On-Call agent recovered a real incident with the owner's local Ollama `llama3.2:3b`. The demo video is published, and a temporary access-gated public demo runs through a Cloudflare Quick Tunnel (no permanent hosting, no automatic deployment); see [Submission guide](docs/submission-guide.md) and [T15 final review](docs/t15-final-review.md). Verdict: LOCALLY COMPLETE — EXTERNAL ACCEPTANCE PENDING.**
 
 **🎬 Demo video (1 min 33 s): [FieldOps v1.0 — Demo & Monitoring](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo)**. It shows the FieldOps web interface, intervention creation and tracking, the Grafana monitoring dashboards, and previously validated delayed-notification alerting test evidence. It does not show a live On-Call agent run or a new live alert; that evidence is the recorded T11 real-model run documented in [T11 audit](docs/t11-audit.md).
+
+**🌐 Temporary public demo:** [https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com). ⚠️ This is a temporary Cloudflare Quick Tunnel opened on 2026-11-13 from the owner's machine; it is available only while that machine and tunnel run, the URL changes if the tunnel restarts, and there is no uptime guarantee. The demo access code is shared privately by the owner; it is never published. Sign in to the browser prompt with user `demo` and that code, then pick the synthetic dispatcher or a technician. Details: [Public demo](docs/public-demo.md).
+
+### What is demonstrated where
+
+| What | Where | Nature |
+|---|---|---|
+| Live application (web interface, interventions, assignment, technician inbox) | Temporary public demo [https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com), access code required | **Live**, but only while the Quick Tunnel runs |
+| Monitoring and alerting | [Demo video](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) (Grafana dashboards, previously validated alerting test evidence) | **Recorded**; not a new live alert |
+| On-Call agent (real alert, real `llama3.2:3b` diagnosis, operator grant, recovery, verified delivery) | Local tests and the recorded T11 run: [T11 audit](docs/t11-audit.md), `agent_tests/` | **Local test evidence**; not shown in the video, not available in the public demo |
+| Public hosting | Cloudflare Quick Tunnel to the isolated `fieldops-public-demo` project | **Temporary**; not a hosted deployment |
+| Continuous integration | GitHub Actions `pr-validation` and `main-release` checks (seven jobs) | **Automatic** on every PR and push to `main` |
+| Deployment automation | `main-release` publishes an image digest; development/production deploy jobs exist but are **not enabled** (no hosting, environments or secrets) | **Not active**; no automatic CD deployment has run |
 
 Reviewers start here: [Submission guide](docs/submission-guide.md) · [Evidence index](docs/evidence-index.md) · [Demo script](docs/demo-script.md)
 
@@ -217,7 +230,7 @@ An Alertmanager webhook creates a durable incident. The agent collects fixed, bo
 - manual production promotion of a development-tested digest behind a required-reviewer environment;
 - manual rollback.
 
-PR checks have run for real on PRs #26–#29. Main-branch deployment, environments and branch protection await owner configuration. See [T12 validation](docs/t12-validation.md) and [GitHub release readiness](docs/github-release-readiness.md).
+The checks run automatically on every PR (#26–#32) and ran on the `main` merge, where `main-release` published an image digest. The development and production deployment jobs are not enabled: no hosting, GitHub environments, secrets or branch protection are configured, so no automatic deployment has run. See [T12 validation](docs/t12-validation.md) and [GitHub release readiness](docs/github-release-readiness.md).
 
 ## Deployment
 
@@ -227,7 +240,7 @@ The hosting kit includes:
 - a private model runtime on an internal network;
 - release, backup-verification, exposure and capacity scripts.
 
-The full target is development and production side by side plus the model. It needs about 8 GB RAM and 4 vCPU, so it does not fit a €5/month server; the costed proposal is in [T13 hosting proposal](docs/t13-hosting-proposal.md). **No public URL exists yet.** A temporary, access-code-protected public demo through Cloudflare Tunnel is prepared in [Public demo](docs/public-demo.md); it starts only after owner approval. See [T13 deployment](docs/t13-deployment.md) and [T13 rollback](docs/t13-rollback.md).
+The full target is development and production side by side plus the model. It needs about 8 GB RAM and 4 vCPU, so it does not fit a €5/month server; the costed proposal is in [T13 hosting proposal](docs/t13-hosting-proposal.md). **No permanent hosting exists.** A temporary, access-code-protected public demo runs through a Cloudflare Quick Tunnel at [https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com) (opened 2026-11-13; temporary Cloudflare Quick Tunnel opened on 2026-11-13 from the owner's machine; it is available only while that machine and tunnel run, the URL changes if the tunnel restarts, and there is no uptime guarantee). See [Public demo](docs/public-demo.md). See [T13 deployment](docs/t13-deployment.md) and [T13 rollback](docs/t13-rollback.md).
 
 ## Security
 
@@ -255,4 +268,4 @@ The full target is development and production side by side plus the model. It ne
 
 - [Demo video — release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo)
 
-There is no public demo URL yet; it will be added only once one exists.
+- [Temporary public demo](https://assume-vbulletin-charming-fallen.trycloudflare.com) — access code required, Quick Tunnel, no uptime guarantee ([details](docs/public-demo.md))
