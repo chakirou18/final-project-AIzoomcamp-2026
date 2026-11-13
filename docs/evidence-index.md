@@ -51,17 +51,18 @@ All feature PRs #16–#29 are integrated: `feature/t15-final-review` was merged 
 
 | Task | Branch | Commit(s) | PR | Status |
 |---|---|---|---|---|
-| T11 | `feature/t11-oncall-agent` | `315b4491…` | [#25](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/25) → `feature/t10-alerting` | open, unmerged |
+| T11 | `feature/t11-oncall-agent` | `315b4491…` | [#25](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/25) → `feature/t10-alerting` | integrated into `main` via #30 |
 | T12 | `feature/t12-ci-cd` | `04f3b497…`, `9e61a791…`, `51464b52…`, `07ea7b54…` | [#26](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/26) → `feature/t11-oncall-agent` | integrated into `main` via #30; real `pr-validation` runs: [43199314066](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43199314066) (lint, image, rules, PostgreSQL integration, Chromium passed; unit and security failed on a workflow env leak), [43200242540](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43200242540) (all seven jobs green after one Chromium failed-job rerun) |
 | T13 | `feature/t13-deployment` | `9f07bd5a…` | [#27](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/27) → `feature/t12-ci-cd` | integrated into `main` via #30; tooling only, no public deployment |
 | T14 | `feature/t14-evidence` | `7dfe09c2…` | [#28](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/28) → `feature/t13-deployment` | merged to `main` via #30; documentation; demo video published separately as release v1.0.0-demo |
-| T15 | `feature/t15-final-review` | see PR | → `feature/t14-evidence` | final review documents, edge-config correction |
+| T15 | `feature/t15-final-review` | `54e06ff0…` | [#29](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/29) → `feature/t14-evidence` | merged into `main` directly via [#30](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/30) (2026-11-13); final review documents, edge-config correction, release readiness |
+| Public demo | `feature/public-demo-tunnel` | `1aec0e7e…` | [#31](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/31) → `main` | merged (2026-11-13); access-gated public-demo boundary |
 
-Issues #11 and #12 carry progress comments; no Issue is closed; no PR is merged.
+Issues #11–#15 carry progress comments and remain open (closure needs the owner's decision). PRs #30 and #31 are merged into `main`; the stacked PRs #16–#29 are integrated through #30.
 
 ## Not available (stated plainly)
 
 - No video of a live On-Call agent recovery or of a new live alert. The published [demo video](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) covers the web interface, interventions, Grafana monitoring and previously validated alerting test evidence; the live agent evidence is the recorded T11 real-model run (`artifacts/t11-real-5bd8899d…/evidence.json`, quoted in [T11 audit](t11-audit.md)).
-- No public URL, hosted deployment, GitHub Actions run, production approval record or remote rollback.
+- No permanent hosted deployment, automatic development deployment, production approval record or remote rollback. GitHub Actions CI runs do exist, and the only public URL is the temporary Quick Tunnel.
 - No cloud model provider; the real model is the owner's local llama3.2:3b. Model output quality on counterfactuals is weak and documented.
 - Five worker-stop lifecycle cases and one database-deletion assertion remain unexecuted under the data-preservation constraint, as in T09–T11.
