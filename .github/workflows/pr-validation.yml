@@ -1,0 +1,20 @@
+# Pull request gate. Untrusted PR jobs receive no deployment or model credentials.
+# Branch protection on main must list every job of checks.yml as a required status check.
+name: pr-validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - "feature/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}FieldOps{% endblock %} &middot; FieldOps</title>
+<link rel="stylesheet" href="/static/vendor/bootstrap-5.3.8.min.css">
+<link rel="stylesheet" href="/static/app.css">
+<meta name="htmx-config" content='{"selfRequestsOnly":true,"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"historyCacheSize":0,"refreshOnHistoryMiss":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":false}]}'>
+<script src="/static/vendor/htmx-2.0.8.min.js" defer>
+</script>
+</head>
+<body hx-history="false">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar">
+<div class="container shell d-flex flex-wrap align-items-center gap-3 py-3">
+<a class="brand" href="{{ '/app/dashboard' if user and user.role == 'operator' else '/app/interventions' }}">&#9638; FieldOps<span class="brand-dot">.</span>
+</a>
+<span class="workspace">MAINTENANCE WORKSPACE</span>
+{% if user %}<nav aria-label="Primary" class="ms-md-auto d-flex gap-3" hx-boost="true">
+<a href="{{ '/app/dashboard' if user.role == 'operator' else '/app/interventions' }}">{% if user.role == 'operator' %}Dashboard{% elif user.role == 'technician' %}My work{% else %}Interventions{% endif %}
+</a>{% if user.role == 'technician' %}<a href="/app/inbox">Inbox</a>{% endif %}
+</nav>
+<div class="identity">{{ user.display_name }} <span class="small d-block">{{ 'Manager' if user.role == 'dispatcher' else user.role|title }}</span>
+</div>
+<form method="post" action="/app/logout">
+<input type="hidden" name="csrf_token" value="{{ csrf }}">
+<button class="btn btn-sm btn-outline-light">Log out</button>
+</form>{% endif %}
+</div>
+</header>
+<main id="main" tabindex="-1" class="container shell py-4 py-lg-5">
+{% if message and not standalone_error %}<div class="alert alert-danger" role="alert" tabindex="-1">
+<h2 class="h6">{{ message }}</h2>{% if status_code == 409 %}<p>Your changes were not saved. <a href="{{ reload_url|default(request.url.path) }}">Reload the latest version</a> before retrying.</p>{% endif %}{% if errors %}<ul class="mb-0">{% for field, messages in errors.items() %}<li>
+<a href="#{{ field }}">{{ field|replace('_', ' ')|title }}: {{ messages|join(' ') }}</a>
+</li>{% endfor %}
+</ul>{% endif %}
+</div>{% endif %}
+{% if notice %}<div class="alert alert-success" role="status">{{ notice }}</div>{% endif %}
+<div id="form">{% block content %}{% endblock %}</div></main>
+<footer class="container shell py-4 small text-secondary border-top">FieldOps &middot; Synthetic demo workspace. Demo identity selection is unsuitable for production authentication.</footer>
+</body>
+</html>

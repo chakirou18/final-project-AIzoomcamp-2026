@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+scrape_configs:
+  - job_name: fieldops-web
+    scrape_timeout: 4s
+    static_configs:
+      - targets: [web:8000]
+        labels:
+          service: fieldops-web
+          environment: local
+rule_files:
+  - /etc/prometheus/notification-rules.yml
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [alertmanager:9093]

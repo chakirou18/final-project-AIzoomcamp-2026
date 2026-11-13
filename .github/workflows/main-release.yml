@@ -1,0 +1,191 @@
+# Validated push to main: rerun every check on the merged commit, publish one immutable
+# digest, then deploy development automatically with no manual gate. Stale runs are skipped,
+# releases are serialized per environment, smoke failure rolls back to the previous digest.
+name: main-release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-release
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  publish:
+    name: Publish immutable image digest
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Log in to GitHub Container Registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: echo "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+      - name: Build once, push by commit tag, record the registry digest
+        id: build
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          docker buildx create --use --name fieldops-release >/dev/null
+          docker buildx build --target runtime --platform linux/amd64 --provenance=false --sbom=false \
+            --tag "${IMAGE}:sha-${GITHUB_SHA}" --push --metadata-file build-metadata.json .
+          DIGEST="$(python3 -c 'import json; print(json.load(open("build-metadata.json"))["containerimage.digest"])')"
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          IMAGE="$IMAGE" DIGEST="$DIGEST" python3 - <<'PY'
+          import json, os
+          record = {
+              "commit": os.environ["GITHUB_SHA"],
+              "image": os.environ["IMAGE"],
+              "digest": os.environ["DIGEST"],
+              "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          }
+          json.dump(record, open("release.json", "w"), indent=2)
+          print(json.dumps(record))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-record
+          path: release.json
+
+  deploy-development:
+    name: Deploy development automatically
+    needs: publish
+    if: vars.DEVELOPMENT_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      deployments: write
+    environment:
+      name: development
+      url: ${{ vars.DEVELOPMENT_URL }}
+    concurrency:
+      group: deploy-development
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      IMAGE_REF: ${{ needs.publish.outputs.image }}@${{ needs.publish.outputs.digest }}
+      DIGEST: ${{ needs.publish.outputs.digest }}
+      TARGET_URL: ${{ vars.DEVELOPMENT_URL }}
+      DEPLOY_TARGET: ${{ secrets.DEVELOPMENT_SSH_USER }}@${{ secrets.DEVELOPMENT_SSH_HOST }}
+      ENVIRONMENT: development
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Skip a stale run when main has moved on
+        id: stale
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          HEAD="$(git rev-parse origin/main)"
+          if [ "$HEAD" != "$GITHUB_SHA" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::main is now $HEAD; not deploying older commit $GITHUB_SHA"
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Prepare SSH identity for the development host only
+        if: steps.stale.outputs.stale == 'false'
+        env:
+          SSH_KEY: ${{ secrets.DEVELOPMENT_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEVELOPMENT_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Release the digest on the development host
+        id: release
+        if: steps.stale.outputs.stale == 'false'
+        run: |
+          ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_TARGET" \
+            "sudo -n /srv/fieldops/bin/deploy.sh $ENVIRONMENT $IMAGE_REF" | tail -n 1 > host-release.json
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          record = json.load(open("host-release.json"))
+          print("previous=" + record.get("previous", ""))
+          print("migration=" + record.get("migration_version", ""))
+          PY
+      - name: Record the development deployment
+        id: deployment
+        if: steps.stale.outputs.stale == 'false'
+        env:
+          MIGRATION: ${{ steps.release.outputs.migration }}
+          PREVIOUS: ${{ steps.release.outputs.previous }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          payload = {
+              "digest": os.environ["DIGEST"],
+              "image": os.environ["IMAGE_REF"],
+              "commit": os.environ["GITHUB_SHA"],
+              "migration_version": os.environ["MIGRATION"],
+              "previous": os.environ["PREVIOUS"],
+              "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          }
+          body = {
+              "ref": os.environ["GITHUB_SHA"],
+              "environment": os.environ["ENVIRONMENT"],
+              "auto_merge": False,
+              "required_contexts": [],
+              "description": "digest " + os.environ["DIGEST"],
+              "payload": payload,
+          }
+          json.dump(body, open("deployment.json", "w"))
+          PY
+          ID="$(gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments" --input deployment.json --jq .id)"
+          echo "id=${ID}" >> "$GITHUB_OUTPUT"
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${ID}/statuses" -f state=in_progress -f environment="$ENVIRONMENT" -f log_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
+      - name: Smoke the development journey (API to inbox, never pauses delivery)
+        if: steps.stale.outputs.stale == 'false'
+        run: python3 scripts/smoke/smoke.py --base-url "$TARGET_URL" --environment "$ENVIRONMENT" --output smoke-development.json
+      - name: Mark the development release eligible for promotion
+        if: steps.stale.outputs.stale == 'false' && success()
+        env:
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
+          MIGRATION: ${{ steps.release.outputs.migration }}
+        run: gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" -f state=success -f environment="$ENVIRONMENT" -f environment_url="$TARGET_URL" -f description="smoke passed; migration ${MIGRATION}" >/dev/null
+      - name: Roll back to the previous compatible digest and mark failure
+        if: failure() && steps.release.outcome == 'success'
+        env:
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.id }}
+          PREVIOUS: ${{ steps.release.outputs.previous }}
+        run: |
+          if [ -n "$PREVIOUS" ]; then
+            ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_TARGET" \
+              "sudo -n /srv/fieldops/bin/deploy.sh $ENVIRONMENT $PREVIOUS" | tail -n 1 > host-rollback.json
+            python3 scripts/smoke/smoke.py --base-url "$TARGET_URL" --environment "$ENVIRONMENT" --output smoke-rollback.json || true
+          else
+            echo "::error::no previous digest recorded; bootstrap failure requires operator intervention"
+          fi
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/deployments/${DEPLOYMENT_ID}/statuses" -f state=failure -f environment="$ENVIRONMENT" -f description="smoke failed; rolled back to ${PREVIOUS:-none}" >/dev/null
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: development-deployment
+          path: |
+            host-release.json
+            host-rollback.json
+            smoke-development.json
+            smoke-rollback.json
+          if-no-files-found: ignore

@@ -1,0 +1,5 @@
+# Vendor binaries/configuration remain unchanged; add only a static HTTP readiness client.
+ARG COMPONENT_IMAGE=busybox:1.37.0-musl@sha256:f6a95d611e0a8780fabdb2aec43e31275b2720dfefa3e41b16835bfc42454478
+FROM busybox:1.37.0-musl@sha256:f6a95d611e0a8780fabdb2aec43e31275b2720dfefa3e41b16835bfc42454478 AS probe
+FROM ${COMPONENT_IMAGE}
+COPY --from=probe /bin/busybox /busybox

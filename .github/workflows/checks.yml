@@ -1,0 +1,166 @@
+# Reusable validation: called by PR validation (untrusted, no secrets) and by the main release.
+name: checks
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.12.19"
+  PIP_AUDIT_VERSION: "2.10.1"
+
+jobs:
+  lint:
+    name: Lint, format, lock and secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Install pinned uv
+        run: pipx install "uv==${UV_VERSION}"
+      - run: uv sync --frozen
+      - run: uv lock --check
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run python scripts/ci/secret_scan.py
+
+  unit:
+    name: Backend unit tests (mock model)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Install pinned uv
+        run: pipx install "uv==${UV_VERSION}"
+      - run: uv sync --frozen
+      - run: mkdir -p reports && uv run pytest -m "not integration and not container" -p no:cacheprovider --tb=short --junitxml=reports/unit.xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: unit-junit
+          path: reports/unit.xml
+
+  integration:
+    name: PostgreSQL integration tests (mock model)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      # Database settings belong to this job only; the unit job must never see a database.
+      FIELDOPS_TEST_DATABASE: "1"
+      FIELDOPS_DB_HOST: localhost
+      FIELDOPS_DB_PORT: "5432"
+      FIELDOPS_DB_NAME: fieldops_test
+      FIELDOPS_DB_USER: fieldops_test
+      FIELDOPS_DB_PASSWORD: ci-synthetic-test-only-password
+      FIELDOPS_ENVIRONMENT: local
+      FIELDOPS_DEMO_MODE: "true"
+      FIELDOPS_SESSION_SECRET: ci-synthetic-session-signing-key-test-only-0000
+    services:
+      postgres:
+        image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
+        env:
+          POSTGRES_DB: fieldops_test
+          POSTGRES_USER: fieldops_test
+          POSTGRES_PASSWORD: ci-synthetic-test-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fieldops_test -d fieldops_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Install pinned uv
+        run: pipx install "uv==${UV_VERSION}"
+      - run: uv sync --frozen
+      - name: Migration smoke (upgrade twice, idempotent seed)
+        run: |
+          uv run python -m fieldops.bootstrap migrate
+          uv run python -m fieldops.bootstrap migrate
+          uv run python -m fieldops.bootstrap seed
+      - run: mkdir -p reports && uv run pytest -m integration -p no:cacheprovider --tb=short --junitxml=reports/integration.xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: integration-junit
+          path: reports/integration.xml
+
+  security:
+    name: Dependency audit and configuration checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: Install pinned uv
+        run: pipx install "uv==${UV_VERSION}"
+      - name: Audit locked runtime dependencies
+        run: |
+          uv export --frozen --no-dev --no-hashes --format requirements-txt -o requirements-ci.txt
+          uvx --from "pip-audit==${PIP_AUDIT_VERSION}" pip-audit -r requirements-ci.txt --strict --progress-spinner off
+      - name: Validate Compose, hosted overrides and environment isolation
+        run: |
+          docker compose version
+          docker compose --profile observability --profile incident --profile test --profile browser config --quiet
+          python3 scripts/deploy/check_isolation.py --output isolation.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: isolation-report
+          path: isolation.json
+
+  rules:
+    name: Prometheus rules and Alertmanager configuration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - name: promtool check and unit tests
+        run: |
+          docker compose --profile observability run --rm --no-deps --entrypoint /bin/promtool prometheus check config /etc/prometheus/prometheus.yml
+          docker compose --profile observability run --rm --no-deps --entrypoint /bin/promtool prometheus check rules /etc/prometheus/notification-rules.yml
+          docker compose --profile observability run --rm --no-deps --entrypoint /bin/promtool prometheus test rules /etc/prometheus/notification-rules-tests.yml
+      - name: Validate the hosted HTTPS edge configuration (Caddy)
+        run: |
+          docker run --rm -e FIELDOPS_PUBLIC_HOST=fieldops.example.invalid -e FIELDOPS_ACME_EMAIL=ops@example.invalid             -v "$PWD/deploy/proxy/Caddyfile:/etc/caddy/Caddyfile:ro"             caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: amtool check-config
+        run: docker compose --profile observability run --rm --no-deps --entrypoint /bin/amtool alertmanager check-config /etc/alertmanager/alertmanager.yml
+
+  browser:
+    name: Chromium journey and performance benchmark
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - run: docker compose --profile browser run --build --rm browser-tests
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: browser-artifacts
+          path: artifacts/
+          if-no-files-found: ignore
+
+  image:
+    name: Build runtime image (not published)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - run: docker build --target runtime --tag "fieldops-ci:${GITHUB_SHA}" .
+      - name: Image starts and imports the application
+        run: docker run --rm "fieldops-ci:${GITHUB_SHA}" python -c "import fieldops.main, fieldops.worker, fieldops.oncall.runtime; print('import ok')"

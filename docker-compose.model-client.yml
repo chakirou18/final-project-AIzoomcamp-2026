@@ -1,0 +1,19 @@
+# Attach an environment's On-Call agent (and nothing else) to the private model network created
+# by docker-compose.model.yml. Provider settings come from the environment file:
+#   FIELDOPS_ONCALL_PROVIDER=ollama
+#   FIELDOPS_ONCALL_PROVIDER_URL=http://ollama:11434
+#   FIELDOPS_ONCALL_MODEL=llama3.2:3b
+#   FIELDOPS_ONCALL_PROVIDER_APPROVED=true
+#   FIELDOPS_ONCALL_PROVIDER_TIMEOUT=30
+#   FIELDOPS_ONCALL_MAX_CALLS=<owner-approved durable budget, 1-10>
+
+services:
+  oncall-agent:
+    networks:
+      - default
+      - model
+
+networks:
+  model:
+    external: true
+    name: fieldops-model

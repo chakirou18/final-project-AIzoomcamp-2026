@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block title %}Request unavailable{% endblock %}{% block content %}<section class="panel p-4" role="alert">
+<p class="eyebrow">REQUEST UNAVAILABLE</p>
+<h1 class="h3">{{ message }}</h1>
+<p>No requested change was confirmed. Check your session and permissions before trying again.</p>
+<a class="btn btn-primary" href="/app/login">Choose demo identity</a> <a class="btn btn-outline-secondary" href="/app/interventions">Return to work queue</a>
+</section>{% endblock %}

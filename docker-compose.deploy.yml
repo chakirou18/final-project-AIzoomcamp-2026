@@ -1,0 +1,60 @@
+# Hosted-environment override: run the published immutable application digest, never build.
+#
+#   docker compose --env-file deploy/environments/<env>.env \
+#     -f docker-compose.yml -f docker-compose.deploy.yml --profile observability --profile incident ...
+#
+# Every environment supplies its own Compose project name, database name/user, published
+# ports, subnet and FIELDOPS_IMAGE (registry@sha256 digest). No service exposes a port on
+# 0.0.0.0; the reverse proxy (docker-compose.proxy.yml) terminates TLS and forwards to the
+# loopback web port only. Each application service is spelled out without YAML anchors so the
+# `!reset` removal of the build definition applies identically on every Compose release.
+
+services:
+  credentials:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+  bootstrap:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+    environment:
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+      FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:?}
+  web:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+    environment:
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+      FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:?}
+    ports: !override
+      - "127.0.0.1:${FIELDOPS_PORT:?}:8000"
+  worker:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+    environment:
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+  alert-credentials:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+  alert-receiver:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+  oncall-bootstrap:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+  oncall-agent:
+    image: ${FIELDOPS_IMAGE:?FIELDOPS_IMAGE must be an immutable registry@sha256 digest}
+    build: !reset null
+    pull_policy: always
+  jaeger:
+    ports: !override
+      - "127.0.0.1:${FIELDOPS_JAEGER_PORT:?}:16686"
+  grafana:
+    ports: !override
+      - "127.0.0.1:${FIELDOPS_GRAFANA_PORT:?}:3000"

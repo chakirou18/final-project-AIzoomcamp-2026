@@ -1,0 +1,511 @@
+name: fieldops
+
+x-bounded-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: "5m"
+    max-file: "3"
+
+x-database-settings: &database-settings
+  FIELDOPS_DB_HOST: db
+  FIELDOPS_DB_PORT: "5432"
+  FIELDOPS_DB_NAME: ${POSTGRES_DB:-fieldops}
+  FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
+  FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+  FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:-local}
+  FIELDOPS_DEMO_MODE: ${FIELDOPS_DEMO_MODE:-true}
+  FIELDOPS_SESSION_SECRET_FILE: /run/fieldops/session_key
+  FIELDOPS_TELEMETRY_ENABLED: ${FIELDOPS_TELEMETRY_ENABLED:-true}
+  FIELDOPS_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+  FIELDOPS_LOG_DIRECTORY: /var/log/fieldops
+
+x-app: &app
+  logging: *bounded-logging
+  image: fieldops-local:foundation
+  build:
+    context: .
+    target: runtime
+  environment: *database-settings
+  volumes:
+    - db_credentials:/run/fieldops:ro
+
+services:
+  credentials:
+    <<: *app
+    user: "0:0"
+    command: ["python", "-m", "fieldops.bootstrap", "credentials"]
+    environment: {}
+    volumes:
+      - db_credentials:/run/fieldops
+      - control_credentials:/run/fieldops-controls
+      - oncall_action_credentials:/run/oncall-action
+      - telemetry_logs:/var/log/fieldops
+      - jaeger_data:/var/lib/fieldops-jaeger
+    restart: "no"
+
+  db:
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fieldops}
+      POSTGRES_USER: ${POSTGRES_USER:-fieldops}
+      POSTGRES_PASSWORD_FILE: /run/fieldops/db_password
+    depends_on:
+      credentials:
+        condition: service_completed_successfully
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - db_credentials:/run/fieldops:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
+  bootstrap:
+    <<: *app
+    command: ["python", "-m", "fieldops.bootstrap", "all"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    <<: *app
+    environment:
+      <<: *database-settings
+      FIELDOPS_OPERATOR_SECRET_FILE: /run/fieldops-controls/operator_key
+      FIELDOPS_RECOVERY_SECRET_FILE: /run/fieldops-controls/recovery_key
+      FIELDOPS_ONCALL_SECRET_FILE: /run/oncall-action/oncall_key
+    volumes:
+      - db_credentials:/run/fieldops:ro
+      - control_credentials:/run/fieldops-controls:ro
+      - oncall_action_credentials:/run/oncall-action:ro
+      - telemetry_logs:/var/log/fieldops
+    ports:
+      - "127.0.0.1:${FIELDOPS_PORT:-8000}:8000"
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5)"
+      interval: 3s
+      timeout: 6s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "fieldops.worker"]
+    environment:
+      FIELDOPS_DB_HOST: db
+      FIELDOPS_DB_PORT: "5432"
+      FIELDOPS_DB_NAME: ${POSTGRES_DB:-fieldops}
+      FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
+      FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:-local}
+      FIELDOPS_TELEMETRY_ENABLED: ${FIELDOPS_TELEMETRY_ENABLED:-true}
+      FIELDOPS_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      FIELDOPS_LOG_DIRECTORY: /var/log/fieldops
+    volumes:
+      - db_credentials:/run/fieldops:ro
+      - telemetry_logs:/var/log/fieldops
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  prometheus:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=24h", "--storage.tsdb.retention.size=256MB"]
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/notification-rules.yml:/etc/prometheus/notification-rules.yml:ro
+      - ./observability/notification-rules-tests.yml:/etc/prometheus/notification-rules-tests.yml:ro
+      - prometheus_data:/prometheus
+    mem_limit: 192m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:9090/-/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  alert-credentials:
+    <<: *app
+    profiles: [observability]
+    user: "0:0"
+    environment: {}
+    command: [python, -m, fieldops.alert_receiver, initialize]
+    volumes:
+      - alert_webhook_credentials:/run/fieldops-webhook
+      - alert_reader_credentials:/run/fieldops-alert-reader
+      - alert_evidence:/var/lib/alerts
+    restart: "no"
+
+  alert-receiver:
+    <<: *app
+    profiles: [observability]
+    command: [python, -m, fieldops.alert_receiver]
+    environment:
+      FIELDOPS_ALERT_RUN_ID: ${FIELDOPS_ALERT_RUN_ID:-}
+      FIELDOPS_ONCALL_INTAKE: "true"
+      FIELDOPS_DB_HOST: db
+      FIELDOPS_DB_NAME: ${POSTGRES_DB:-fieldops}
+      FIELDOPS_DB_USER: fieldops_oncall
+      FIELDOPS_DB_PASSWORD_FILE: /run/oncall-db/password
+    volumes:
+      - alert_webhook_credentials:/run/fieldops-webhook:ro
+      - alert_reader_credentials:/run/fieldops-alert-reader:ro
+      - alert_evidence:/var/lib/alerts
+      - oncall_db_credentials:/run/oncall-db:ro
+    depends_on:
+      alert-credentials:
+        condition: service_completed_successfully
+      oncall-bootstrap:
+        condition: service_completed_successfully
+    mem_limit: 128m
+    cpus: 0.5
+    read_only: true
+    tmpfs: [/tmp:size=8m]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health/ready',timeout=2)"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  oncall-bootstrap:
+    <<: *app
+    profiles: [observability]
+    user: "0:0"
+    command: [python, -m, fieldops.oncall.runtime, provision]
+    volumes:
+      - db_credentials:/run/fieldops:ro
+      - oncall_db_credentials:/run/oncall-db
+      - oncall_action_credentials:/run/oncall-action
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    restart: "no"
+
+  oncall-agent:
+    <<: *app
+    profiles: [incident]
+    command: [python, -m, fieldops.oncall.runtime]
+    environment:
+      FIELDOPS_DB_HOST: db
+      FIELDOPS_DB_NAME: ${POSTGRES_DB:-fieldops}
+      FIELDOPS_DB_USER: fieldops_oncall
+      FIELDOPS_DB_PASSWORD_FILE: /run/oncall-db/password
+      FIELDOPS_ONCALL_PROVIDER: ${FIELDOPS_ONCALL_PROVIDER:-unconfigured}
+      FIELDOPS_ONCALL_PROVIDER_URL: ${FIELDOPS_ONCALL_PROVIDER_URL:-http://host.docker.internal:11434}
+      FIELDOPS_ONCALL_MODEL: ${FIELDOPS_ONCALL_MODEL:-}
+      FIELDOPS_ONCALL_PROVIDER_APPROVED: ${FIELDOPS_ONCALL_PROVIDER_APPROVED:-false}
+      FIELDOPS_ONCALL_MAX_CALLS: ${FIELDOPS_ONCALL_MAX_CALLS:-1}
+      FIELDOPS_ONCALL_OUTPUT_TOKENS: ${FIELDOPS_ONCALL_OUTPUT_TOKENS:-1024}
+      FIELDOPS_ONCALL_PROVIDER_TIMEOUT: ${FIELDOPS_ONCALL_PROVIDER_TIMEOUT:-20}
+    volumes:
+      - oncall_db_credentials:/run/oncall-db:ro
+      - oncall_action_credentials:/run/oncall-action:ro
+    depends_on:
+      oncall-bootstrap:
+        condition: service_completed_successfully
+      web:
+        condition: service_healthy
+      alert-receiver:
+        condition: service_healthy
+    mem_limit: 192m
+    cpus: 0.5
+    read_only: true
+    tmpfs: [/tmp:size=8m]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 35s
+    healthcheck:
+      test: [CMD, python, -c, "import time; from pathlib import Path; p=Path('/tmp/oncall-heartbeat'); assert p.exists() and time.time()-p.stat().st_mtime < 40"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  alertmanager:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: prom/alertmanager:v0.35.0@sha256:e638797febd034838eca8b98cdbd46f951e9bf7f178777aa8669167406a9946c
+    depends_on:
+      alert-receiver:
+        condition: service_healthy
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager", "--data.retention=24h", "--cluster.listen-address="]
+    volumes:
+      - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alert_webhook_credentials:/run/fieldops-webhook:ro
+      - alertmanager_data:/alertmanager
+    mem_limit: 64m
+    cpus: 0.25
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:9093/-/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  loki:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: grafana/loki:3.7.9@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28
+    command: ["-config.file=/etc/loki/fieldops.yml"]
+    volumes:
+      - ./observability/loki.yml:/etc/loki/fieldops.yml:ro
+      - loki_data:/loki
+    environment:
+      GOMEMLIMIT: 180MiB
+    mem_limit: 256m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:3100/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  alloy:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: grafana/alloy:v1.21.3@sha256:8ab871206bd2d8f89277f53abffee5f452a293980788d52f85fa183a87a505a4
+    command: [run, --disable-reporting, --server.http.listen-addr=0.0.0.0:12345, --storage.path=/var/lib/alloy, /etc/alloy/config.alloy]
+    volumes:
+      - ./observability/config.alloy:/etc/alloy/config.alloy:ro
+      - telemetry_logs:/var/log/fieldops:ro
+      - alloy_data:/var/lib/alloy
+    environment:
+      GOMEMLIMIT: 256MiB
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:12345/-/ready]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  otel-collector:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: otel/opentelemetry-collector-contrib:0.165.0@sha256:e40d61f10c9a617cca1ffd1be4d7e2b3a4b0f0001798ff07e58cabe82e618cea
+    command: ["--config=/etc/otelcol/fieldops.yml"]
+    volumes:
+      - ./observability/collector.yml:/etc/otelcol/fieldops.yml:ro
+    environment:
+      GOMEMLIMIT: 256MiB
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:13133/]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  jaeger:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: jaegertracing/jaeger:2.23.0@sha256:3823829974ccfc2485d2e48b165579091f32295022ae80ca49704e2f4834116e
+    command: ["--config=/etc/jaeger/fieldops.yml"]
+    depends_on:
+      credentials:
+        condition: service_completed_successfully
+    volumes:
+      - ./observability/jaeger.yml:/etc/jaeger/fieldops.yml:ro
+      - jaeger_data:/data
+    ports:
+      - "127.0.0.1:${FIELDOPS_JAEGER_PORT:-16686}:16686"
+    environment:
+      GOMEMLIMIT: 256MiB
+    mem_limit: 384m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:13133/status]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  grafana:
+    profiles: [observability]
+    logging: *bounded-logging
+    build:
+      context: observability
+      dockerfile: Dockerfile.probe
+      args:
+        COMPONENT_IMAGE: grafana/grafana:13.3.0@sha256:488984b716c0862639f91a698adbe2862677a5a07bad42da5f03f3030883b205
+    volumes:
+      - ./observability/grafana/datasources.yml:/etc/grafana/provisioning/datasources/fieldops.yml:ro
+      - ./observability/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/fieldops.yml:ro
+      - ./observability/grafana/dashboard.json:/etc/grafana/dashboards/fieldops.json:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${FIELDOPS_GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_DISABLE_INITIAL_ADMIN_CREATION: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # Permits read-only Explore/transient inspection; Viewer still cannot save dashboards.
+      GF_USERS_VIEWERS_CAN_EDIT: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/fieldops.json
+      GOMEMLIMIT: 384MiB
+    mem_limit: 768m
+    cpus: 1.0
+    healthcheck:
+      test: [CMD, /busybox, wget, -q, -O, /dev/null, http://127.0.0.1:3000/api/health]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  tests:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    environment:
+      FIELDOPS_TEST_DATABASE: "1"
+      FIELDOPS_DB_HOST: test-db
+      FIELDOPS_DB_NAME: fieldops_test
+      FIELDOPS_DB_USER: fieldops_test
+      FIELDOPS_DB_PASSWORD: synthetic-isolated-test-only-password
+      FIELDOPS_ENVIRONMENT: local
+    volumes:
+      - ./artifacts:/app/artifacts
+    networks: [test]
+    depends_on:
+      test-db:
+        condition: service_healthy
+
+  test-db:
+    profiles: ["test"]
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
+    environment:
+      POSTGRES_DB: fieldops_test
+      POSTGRES_USER: fieldops_test
+      POSTGRES_PASSWORD: synthetic-isolated-test-only-password
+    tmpfs:
+      - /var/lib/postgresql/data:size=512m
+    networks: [test]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fieldops_test -d fieldops_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  browser-tests:
+    profiles: ["browser"]
+    build:
+      context: .
+      target: browser
+    environment:
+      FIELDOPS_TEST_DATABASE: "1"
+      FIELDOPS_DB_HOST: browser-db
+      FIELDOPS_DB_NAME: fieldops_test
+      FIELDOPS_DB_USER: fieldops_test
+      FIELDOPS_DB_PASSWORD: synthetic-isolated-test-only-password
+      FIELDOPS_ENVIRONMENT: local
+      FIELDOPS_DEMO_MODE: "true"
+    volumes:
+      - ./artifacts:/app/artifacts
+    networks: [browser]
+    shm_size: 256m
+    depends_on:
+      browser-db:
+        condition: service_healthy
+
+  browser-db:
+    profiles: ["browser"]
+    image: postgres:17-bookworm@sha256:051f7b7b3abdd564d5d1bd1e8c4b9c1b6e77087d1dd22020ede611c096a272e0
+    environment:
+      POSTGRES_DB: fieldops_test
+      POSTGRES_USER: fieldops_test
+      POSTGRES_PASSWORD: synthetic-isolated-test-only-password
+    tmpfs:
+      - /var/lib/postgresql/data:size=512m
+    networks: [browser]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fieldops_test -d fieldops_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  oncall_db_credentials:
+  oncall_action_credentials:
+  alert_webhook_credentials:
+  alert_reader_credentials:
+  alert_evidence:
+  postgres_data:
+  db_credentials:
+  control_credentials:
+  telemetry_logs:
+  prometheus_data:
+  alertmanager_data:
+  loki_data:
+  alloy_data:
+  jaeger_data:
+  grafana_data:
+
+networks:
+  test:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${FIELDOPS_TEST_SUBNET:-10.250.0.0/24}
+  browser:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${FIELDOPS_BROWSER_SUBNET:-10.250.1.0/24}
+  default:
+    ipam:
+      config:
+        - subnet: ${FIELDOPS_SUBNET:-10.240.0.0/24}

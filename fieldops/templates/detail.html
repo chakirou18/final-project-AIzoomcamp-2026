@@ -1,0 +1,71 @@
+{% extends "base.html" %}{% block title %}{{ job.title }}{% endblock %}{% block content %}<a class="back-link" href="/app/interventions">&larr; Work queue</a>
+<div class="page-heading mt-4">
+<div>
+<p class="eyebrow">INTERVENTION &middot; VERSION {{ job.row_version }}</p>
+<h1>{{ job.title }}</h1>
+<p class="text-secondary">{{ job.site }}</p>
+</div>
+<span class="badge status-{{ job.status }}">{{ job.status|replace('_',' ')|title }}</span>
+</div>
+<div class="row g-4">
+<section class="col-lg-8">
+<div class="panel p-4">
+<h2 class="h5">Work details</h2>
+<dl class="row mb-0">
+<dt class="col-sm-3">Priority</dt>
+<dd class="col-sm-9">{{ job.priority|title }}</dd>
+<dt class="col-sm-3">Description</dt>
+<dd class="col-sm-9 preserve">{{ job.description or 'No description provided.' }}</dd>
+<dt class="col-sm-3">Created</dt>
+<dd class="col-sm-9">{{ job.created_at.strftime('%d %b %Y - %H:%M') }} UTC</dd>{% if job.started_at %}<dt class="col-sm-3">Started</dt>
+<dd class="col-sm-9">{{ job.started_at.strftime('%d %b %Y - %H:%M:%S') }} UTC</dd>{% endif %}{% if job.closed_at %}<dt class="col-sm-3">Closed</dt>
+<dd class="col-sm-9">{{ job.closed_at.strftime('%d %b %Y - %H:%M:%S') }} UTC</dd>{% endif %}{% if job.resolution %}<dt class="col-sm-3">Resolution</dt>
+<dd class="col-sm-9 preserve">{{ job.resolution }}</dd>{% endif %}
+</dl>
+</div>
+<section class="panel p-4 mt-4">
+<h2 class="h5 mb-4">Activity history</h2>
+<ol class="history list-unstyled">{% for event in history.items %}<li>
+<h3 class="h6">{{ event.event_type|title }}</h3>
+<p class="small text-secondary">{{ event.created_at.strftime('%d %b %Y - %H:%M:%S') }} UTC</p>
+<details>
+<summary>Actor and changed fields</summary><p class="small mt-2">Actor: {{ event.actor_id or 'System' }}</p>
+<dl class="small mt-2">{% for field,change in event.changed_fields.items() %}<dt>{{ field|replace('_',' ')|title }}</dt>
+<dd>{{ change.get('old') }} &middot; {{ change.get('new') }}</dd>{% endfor %}
+</dl>
+</details>
+</li>{% endfor %}
+</ol>{% set page = history %}{% include '_pagination.html' %}</section>
+</section>
+<aside class="col-lg-4">
+<section class="panel p-4">
+<h2 class="h5">Next actions</h2>{% if user.role == 'dispatcher' and job.status in ['open','assigned'] %}<a class="btn btn-outline-primary w-100 my-3" href="/app/interventions/{{ job.id }}/edit">Edit details</a>
+<form method="post" action="/app/interventions/{{ job.id }}/assignment">
+<input type="hidden" name="csrf_token" value="{{ csrf }}">
+<input type="hidden" name="expected_version" value="{{ job.row_version }}">
+<label class="form-label" for="technician_id">{{ 'Reassign technician' if job.technician_id else 'Assign technician' }}</label>
+<select class="form-select mb-3" name="technician_id" id="technician_id" required>{% for tech in technicians %}<option value="{{ tech.id }}" {% if tech.id == job.technician_id %}selected{% endif %}>{{ tech.display_name }}</option>{% endfor %}
+</select>
+<button class="btn btn-primary w-100">Save assignment</button>
+</form>{% endif %}
+{% if user.role == 'technician' and job.status in ['assigned','in_progress'] %}<form method="post" action="/app/interventions/{{ job.id }}/transition">
+<input type="hidden" name="csrf_token" value="{{ csrf }}">
+<input type="hidden" name="expected_version" value="{{ job.row_version }}">
+<input type="hidden" name="target_status" value="{{ 'in_progress' if job.status == 'assigned' else 'completed' }}">{% if job.status == 'in_progress' %}<label class="form-label" for="resolution">Resolution *</label>
+<textarea class="form-control mb-3" name="resolution" id="resolution" required maxlength="4000" rows="4" aria-describedby="resolution-help" {% if message %}aria-invalid="true"{% endif %}>{{ values.get('resolution', '') }}</textarea>
+<p class="form-text" id="resolution-help">Describe the completed work (maximum 4000 characters).</p>{% endif %}
+<button class="btn btn-primary w-100">{{ 'Start intervention' if job.status == 'assigned' else 'Complete intervention' }}</button>
+</form>{% endif %}
+{% if user.role == 'dispatcher' and job.status in ['open','assigned','in_progress'] %}<details class="mt-4">
+<summary class="text-danger">Cancel intervention</summary>
+<p class="small mt-3">Cancellation is permanent. This intervention cannot be reopened.</p>
+<form method="post" action="/app/interventions/{{ job.id }}/transition">
+<input type="hidden" name="csrf_token" value="{{ csrf }}">
+<input type="hidden" name="expected_version" value="{{ job.row_version }}">
+<input type="hidden" name="target_status" value="cancelled">
+<button class="btn btn-outline-danger">Confirm cancellation</button>
+</form>
+</details>{% endif %}{% if job.status in ['completed','cancelled'] %}<p class="text-secondary">This intervention is closed. Its details and activity remain available for reference.</p>{% endif %}
+</section>
+</aside>
+</div>{% endblock %}

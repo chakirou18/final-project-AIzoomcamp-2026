@@ -1,0 +1,48 @@
+logging {
+  level = "warn"
+}
+
+local.file_match "fieldops" {
+  path_targets = [
+    {"__path__" = "/var/log/fieldops/fieldops-web.jsonl", "service" = "fieldops-web", "environment" = "local"},
+    {"__path__" = "/var/log/fieldops/fieldops-worker.jsonl", "service" = "fieldops-worker", "environment" = "local"},
+  ]
+  sync_period = "1s"
+}
+
+loki.source.file "fieldops" {
+  targets    = local.file_match.fieldops.targets
+  forward_to = [loki.process.timestamps.receiver]
+}
+
+loki.process "timestamps" {
+  forward_to = [loki.relabel.bounded.receiver]
+  stage.json {
+    expressions = {"timestamp" = "timestamp"}
+  }
+  stage.timestamp {
+    source = "timestamp"
+    format = "RFC3339Nano"
+    action_on_failure = "skip"
+  }
+}
+
+// IDs stay in JSON fields. No filename, trace/span/event/user IDs are stream labels.
+loki.relabel "bounded" {
+  forward_to = [loki.write.local.receiver]
+  rule {
+    action = "labelkeep"
+    regex  = "service|environment"
+  }
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+    batch_wait = "1s"
+    batch_size = "256KiB"
+    min_backoff_period = "1s"
+    max_backoff_period = "5s"
+    max_backoff_retries = 5
+  }
+}

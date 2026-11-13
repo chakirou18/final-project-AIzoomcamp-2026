@@ -1,0 +1,51 @@
+# FieldOps public edge. Values come from the environment file through docker-compose.proxy.yml.
+# Only the public synthetic-demo surface is reachable; everything operational stays private.
+{
+	email {$FIELDOPS_ACME_EMAIL}
+	admin off
+}
+
+# Plain HTTP serves only the liveness probe used by the container healthcheck and redirects
+# everything else to HTTPS.
+:80 {
+	@live path /health/live
+	handle @live {
+		reverse_proxy web:8000
+	}
+	handle {
+		redir https://{$FIELDOPS_PUBLIC_HOST}{uri} permanent
+	}
+}
+
+{$FIELDOPS_PUBLIC_HOST} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+
+	# Private surfaces are denied at the edge even though the web service binds loopback only.
+	@private path /metrics /metrics/* /internal/* /demo/* /docs /redoc /openapi.json
+	respond @private 404
+
+	# Public application: HTML journeys, JSON API, health, static assets.
+	reverse_proxy web:8000 {
+		header_up X-Forwarded-Proto https
+		header_up X-Forwarded-Host {host}
+	}
+
+	log {
+		output stdout
+		# Never log cookies or authorization headers (Caddy also redacts them by default).
+		format filter {
+			wrap json
+			fields {
+				request>headers>Cookie delete
+				request>headers>Authorization delete
+			}
+		}
+	}
+}

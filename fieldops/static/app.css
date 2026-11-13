@@ -1,0 +1,60 @@
+/* FieldOps local workspace skin; Bootstrap provides layout and controls. */
+:root{--ink:#182b3a;--accent:#087e70;--bs-primary:#087e70;--bs-link-color:#086d62;--bs-link-hover-color:#044b43}
+body{background:#f5f7f8;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+main{overflow-wrap:anywhere}
+.shell{max-width:1180px}
+.topbar{background:#152e39;color:#fff}
+.topbar a{color:#e7f0f1;text-decoration:none}
+.brand{font-size:1.65rem;font-weight:800;letter-spacing:-1px}
+.brand-dot{color:#6ee3bb}
+.workspace{font-size:.62rem;letter-spacing:.13em;color:#b3c6cc}
+.identity{font-size:.8rem;border-left:1px solid #627982;padding-left:1rem}
+.identity .small{color:#b3c6cc}
+.eyebrow{font-size:.7rem;letter-spacing:.14em;font-weight:750;color:#476e76;margin-bottom:.65rem}
+h1{font-weight:750;letter-spacing:-.035em;font-size:clamp(1.85rem,4vw,2.5rem)}
+.page-heading{display:flex;align-items:center;justify-content:space-between;gap:1.5rem;margin-bottom:2rem}
+.panel{background:#fff;border:1px solid #dce4e7;border-radius:12px;box-shadow:0 2px 4px #182b3a03}
+.job-list{display:grid;gap:.85rem}
+.job-card{display:flex;justify-content:space-between;align-items:center;gap:1.5rem;padding:1.5rem}
+.job-card a{font-weight:600;text-decoration:none}
+.job-meta{display:flex;align-items:flex-end;flex-direction:column;gap:.65rem;flex-shrink:0}
+.badge{font-weight:650;font-size:.72rem;padding:.5em .85em;border-radius:6px;color:#304450;background:#e8edf0}
+.status-assigned{background:#e4efff;color:#244e91}
+.status-in_progress{background:#fff0ce;color:#795400}
+.status-completed{background:#def4e9;color:#196441}
+.status-cancelled{background:#f7e2e3;color:#873a3d}
+.priority{font-size:.75rem;font-weight:650}
+.priority-urgent{color:#a3232b}
+.priority-high{color:#8c5100}
+.btn{min-height:42px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.btn-primary{--bs-btn-bg:#087567;--bs-btn-border-color:#087567;--bs-btn-hover-bg:#05594f;--bs-btn-hover-border-color:#05594f;--bs-btn-active-bg:#05594f}
+.btn-outline-primary{--bs-btn-color:#087567;--bs-btn-border-color:#087567;--bs-btn-hover-bg:#087567;--bs-btn-hover-border-color:#087567}
+.form-control,.form-select{min-height:44px}
+.form-label{font-weight:600;font-size:.9rem}
+.form-panel{max-width:780px}
+.history li{border-left:2px solid #dce9e5;padding:0 0 1.5rem 1.2rem}
+.history dd,dd,.preserve{overflow-wrap:anywhere}
+.preserve{white-space:pre-wrap}
+.empty{text-align:center;padding:3rem 1.5rem}
+.login-grid{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;padding:3rem 0}
+.intro-note{margin-top:2rem;border-left:3px solid #087e70;padding-left:1rem;color:#47636b}
+.back-link{font-size:.9rem}
+.skip-link{position:absolute;left:1rem;top:-100px;background:white;padding:1rem;z-index:100}
+.skip-link:focus{top:1rem}
+:focus-visible{outline:3px solid #b14c00!important;outline-offset:3px!important}
+main:focus{outline:none}
+a,button,summary{touch-action:manipulation}
+summary{cursor:pointer}
+a:hover{text-decoration:underline}
+.job-card>div{min-width:0}
+.job-card h3,.job-card h2{overflow-wrap:anywhere}
+@media(max-width:767px){.workspace{display:none}
+.topbar nav{order:3;width:100%}
+.identity{margin-left:auto}
+.page-heading{align-items:flex-start;flex-direction:column;gap:.75rem}
+.job-card{align-items:flex-start;flex-direction:column;padding:1.15rem}
+.job-meta{align-items:flex-start}
+.login-grid{grid-template-columns:1fr;gap:2rem;padding:.5rem 0}
+.login-grid .display-5{font-size:2.3rem}
+.shell{padding-left:1rem;padding-right:1rem}
+}
