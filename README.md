@@ -2,7 +2,9 @@
 
 Intelligent Technical Maintenance Intervention Management — final project for AI Dev Tools Zoomcamp 2026.
 
-**Status (2026-11-12): T01–T15 are implemented and published as a stacked chain of feature PRs (#16–#29, open, unmerged). All seven CI checks pass on GitHub for T12–T15. The On-Call agent recovered a real incident with the owner's local Ollama `llama3.2:3b`. No public deployment and no demo video exist yet; see [Submission guide](docs/submission-guide.md) and [T15 final review](docs/t15-final-review.md). Verdict: LOCALLY COMPLETE — EXTERNAL ACCEPTANCE PENDING.**
+**Status (2026-11-13): T01–T15 are implemented and merged into `main` via PR #30; all seven CI checks pass on GitHub, and the main-release workflow published an immutable image digest (development deployment not enabled). The On-Call agent recovered a real incident with the owner's local Ollama `llama3.2:3b`. The demo video is published; no public deployment exists yet; see [Submission guide](docs/submission-guide.md) and [T15 final review](docs/t15-final-review.md). Verdict: LOCALLY COMPLETE — EXTERNAL ACCEPTANCE PENDING.**
+
+**🎬 Demo video (1 min 33 s): [FieldOps v1.0 — Demo & Monitoring](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo)**. It shows the FieldOps web interface, intervention creation and tracking, the Grafana monitoring dashboards, and previously validated delayed-notification alerting test evidence. It does not show a live On-Call agent run or a new live alert; that evidence is the recorded T11 real-model run documented in [T11 audit](docs/t11-audit.md).
 
 Reviewers start here: [Submission guide](docs/submission-guide.md) · [Evidence index](docs/evidence-index.md) · [Demo script](docs/demo-script.md)
 
@@ -238,7 +240,7 @@ The full target is development and production side by side plus the model. It ne
 ## Known limitations
 
 - **Local only.** Hosting, the production approval record and a rollback rehearsal are pending owner approval.
-- **No video.** The demo video is not recorded yet.
+- **Video scope.** The published video covers the web interface, interventions, Grafana and previously validated alerting evidence; it does not show a live agent recovery or a new live alert.
 - **Weak model.** The 3B model is advisory and unreliable on counterfactual evidence; the policy compensates.
 - **CPU inference.** Inference must run on CPU on the development machine, because structured output crashed its GPU backend.
 - **Untested cases.** Five worker-stop cases and one database-deletion assertion are not executed, under the data-preservation rule.
@@ -251,4 +253,6 @@ The full target is development and production side by side plus the model. It ne
 - [T15 final review](docs/t15-final-review.md)
 - [Final release checklist](docs/final-release-checklist.md)
 
-There is no demo video link and no public demo URL yet; both will be added only once they exist.
+- [Demo video — release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo)
+
+There is no public demo URL yet; it will be added only once one exists.

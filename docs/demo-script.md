@@ -1,6 +1,6 @@
 # FieldOps reviewer walkthrough and incident demonstration script
 
-A reproducible, local, synthetic-data walkthrough of the complete FieldOps journey: dispatcher assignment, technician inbox, operator dashboard, a real delivery delay alert, a genuine model-assisted diagnosis, an operator-approved allowlisted recovery and verified delivery. Every step names the command, the expected observation and the evidence it produced in the recorded run. **No video recording exists yet**; the storyboard at the end is the narration plan for one.
+A reproducible, local, synthetic-data walkthrough of the complete FieldOps journey: dispatcher assignment, technician inbox, operator dashboard, a real delivery delay alert, a genuine model-assisted diagnosis, an operator-approved allowlisted recovery and verified delivery. Every step names the command, the expected observation and the evidence it produced in the recorded run. **A demo video is published as [release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo)** (1 min 33 s). It covers the FieldOps web interface, intervention creation and tracking, the Grafana monitoring dashboards, and previously validated delayed-notification alerting test evidence. The full live incident sequence in section 3 (real alert, model diagnosis, operator grant, recovery) is documented from the recorded T11 run and is not part of that video.; the storyboard at the end is the narration plan for one.
 
 ## 0. Prerequisites (5 minutes)
 
@@ -50,7 +50,7 @@ Negative demonstrations (no model spend): revoke the grant or change the generat
 - The agent database role cannot read business tables or modify grants; the agent bearer can only resume a persisted, operator-granted incident at the expected generation.
 - Resolution is enforced by a PostgreSQL trigger that requires the successful action record, matching grant and delivered affected rows.
 
-## 5. Video storyboard (target 4–5 minutes, not recorded)
+## 5. Video storyboard (target 4–5 minutes; the published 1 min 33 s video covers a subset, see the status note at the top)
 
 1. 0:00 Title, architecture diagram (`docs/architecture.md`), one sentence on the paused-delivery scenario.
 2. 0:30 Dispatcher assigns; technician inbox updates; dashboard counts.
@@ -61,7 +61,7 @@ Negative demonstrations (no model spend): revoke the grant or change the generat
 
 Narration must say "synthetic data", "local demonstration" and "the policy, not the model, authorizes the action".
 
-## 6. Recording package for the owner (prepared 2026-11-12; no recording exists)
+## 6. Recording package for the owner (prepared 2026-11-12; a shorter video was recorded and published 2026-11-13 as [release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo); this package remains for a full live-incident recording)
 
 Claude Code cannot record the screen in this setup, so the recording is an owner action. The sequence below reproduces the verified local run.
 

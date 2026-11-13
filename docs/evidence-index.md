@@ -40,9 +40,9 @@ Maps every functional (F01–F10) and non-functional (N01–N07) requirement fro
 
 | Class | Meaning | Examples |
 |---|---|---|
-| ACTUAL | produced in this project and re-verifiable now | source and PRs #21–#26, `artifacts/claude/*.xml` JUnit files, `artifacts/t11-real-5bd8899d…/evidence.json`, real GitHub Actions runs on PR #26 |
+| ACTUAL | produced in this project and re-verifiable now | demo video [release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) (1 min 33 s, published 2026-11-13; web interface, interventions, Grafana, previously validated alerting evidence), source and PRs #21–#26, `artifacts/claude/*.xml` JUnit files, `artifacts/t11-real-5bd8899d…/evidence.json`, real GitHub Actions runs on PR #26 |
 | HISTORICAL | produced by an earlier validated session and not rerun since | T08–T10 measurements quoted in their validation documents, Codex's 507-case T11 ledger |
-| PLANNED | designed and documented, execution depends on an owner action | public deployment, production promotion with approval, rollback rehearsal, video recording |
+| PLANNED | designed and documented, execution depends on an owner action | public deployment, production promotion with approval, rollback rehearsal, a video of a live On-Call agent recovery |
 | BLOCKED | cannot be produced from this machine or session | hosted smoke results, approval records, public URLs, main→development automatic run (no main merge, no hosting) |
 
 ## GitHub publication state (2026-11-12)
@@ -52,14 +52,14 @@ Maps every functional (F01–F10) and non-functional (N01–N07) requirement fro
 | T11 | `feature/t11-oncall-agent` | `315b4491…` | [#25](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/25) → `feature/t10-alerting` | open, unmerged |
 | T12 | `feature/t12-ci-cd` | `04f3b497…`, `9e61a791…`, `51464b52…`, `07ea7b54…` | [#26](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/26) → `feature/t11-oncall-agent` | open, unmerged; real `pr-validation` runs: [43199314066](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43199314066) (lint, image, rules, PostgreSQL integration, Chromium passed; unit and security failed on a workflow env leak), [43200242540](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43200242540) (all seven jobs green after one Chromium failed-job rerun) |
 | T13 | `feature/t13-deployment` | `9f07bd5a…` | [#27](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/27) → `feature/t12-ci-cd` | open, unmerged; tooling only, no public deployment |
-| T14 | `feature/t14-evidence` | `7dfe09c2…` | [#28](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/28) → `feature/t13-deployment` | open, unmerged; documentation; no video |
+| T14 | `feature/t14-evidence` | `7dfe09c2…` | [#28](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/28) → `feature/t13-deployment` | merged to `main` via #30; documentation; demo video published separately as release v1.0.0-demo |
 | T15 | `feature/t15-final-review` | see PR | → `feature/t14-evidence` | final review documents, edge-config correction |
 
 Issues #11 and #12 carry progress comments; no Issue is closed; no PR is merged.
 
 ## Not available (stated plainly)
 
-- No video recording. The storyboard in the demo script is a plan.
+- No video of a live On-Call agent recovery or of a new live alert. The published [demo video](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) covers the web interface, interventions, Grafana monitoring and previously validated alerting test evidence; the live agent evidence is the recorded T11 real-model run (`artifacts/t11-real-5bd8899d…/evidence.json`, quoted in [T11 audit](t11-audit.md)).
 - No public URL, hosted deployment, GitHub Actions run, production approval record or remote rollback.
 - No cloud model provider; the real model is the owner's local llama3.2:3b. Model output quality on counterfactuals is weak and documented.
 - Five worker-stop lifecycle cases and one database-deletion assertion remain unexecuted under the data-preservation constraint, as in T09–T11.

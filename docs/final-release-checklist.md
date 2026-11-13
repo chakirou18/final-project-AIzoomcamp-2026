@@ -42,7 +42,7 @@ Status as of the Claude handover session on 2026-11-11 (local, unpublished). Eac
 ## Demonstration and submission (T14) — partially BLOCKED
 
 - [x] Reviewer walkthrough, incident scenario, evidence index and rubric mapping written.
-- [ ] Video recording (none exists).
+- [x] Demo video published 2026-11-13: [release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) (web interface, interventions, Grafana, previously validated alerting evidence; no live agent run).
 - [ ] CI/deploy links (none exist).
 
 ## Housekeeping
@@ -59,4 +59,4 @@ Status as of the Claude handover session on 2026-11-11 (local, unpublished). Eac
 - [x] README reviewer sections; recording package in `docs/demo-script.md` section 6.
 - [ ] Owner: approve and apply the integration merge, ruleset and environments.
 - [ ] Owner: choose hosting and a monthly ceiling; provide DNS; `az login` if Azure should be reconsidered.
-- [ ] Owner: record the video.
+- [x] Owner: recorded and published the demo video (release v1.0.0-demo).
