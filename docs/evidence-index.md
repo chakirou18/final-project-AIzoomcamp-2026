@@ -14,7 +14,7 @@ Maps every functional (F01–F10) and non-functional (N01–N07) requirement fro
 | F06 Dashboard counts, delayed label | T07 suite; live dashboard reads in T09–T11 evidence | PASS local |
 | F07 Automatic delay detection ≤ 110 s | `artifacts/t10-alerting-*/real-alert.json` (103.797 s), T11 real run 100.719 s, four rules / 27 promtool assertions | PASS local |
 | F08 Safe recovery and incident review | `artifacts/t11-real-5bd8899d1d424a9ab234acf3b3f405a1/evidence.json` (real model), `artifacts/t11-live-a50f4cf158114cdd8359a8c69d0aa2bd/evidence.json` (mock), `tests/test_t11*.py` | PASS local |
-| F09 OpenAPI, health, private metrics | `tests/test_contracts.py`, `test_health.py`; smoke private-path check (hosted) | PASS local; hosted exposure BLOCKED |
+| F09 OpenAPI, health, private metrics | `tests/test_contracts.py`, `test_health.py`, `tests/test_public_demo.py`; public-demo check through the Quick Tunnel (private surfaces 404, metrics 401 without code) | PASS local; PASS through the temporary public tunnel; no permanent hosting |
 | F10 Role permissions, CSRF | `tests/test_sessions.py`, T05/T07 reviews, T11 grant tests | PASS local |
 | N01 Reliability (rollback, crash after inbox insert) | T06 PostgreSQL injected-failure tests | PASS local |
 | N02 Delivery SLO (20 assignments ≤ 10 s each) | T06/T08 measured results in `docs/t08-validation.md` | PASS local |
@@ -40,26 +40,29 @@ Maps every functional (F01–F10) and non-functional (N01–N07) requirement fro
 
 | Class | Meaning | Examples |
 |---|---|---|
-| ACTUAL | produced in this project and re-verifiable now | source and PRs #21–#26, `artifacts/claude/*.xml` JUnit files, `artifacts/t11-real-5bd8899d…/evidence.json`, real GitHub Actions runs on PR #26 |
+| ACTUAL | produced in this project and re-verifiable now | temporary public demo [https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com) (Quick Tunnel, 2026-11-13; 37/37 boundary and journey checks through the public URL), demo video [release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) (1 min 33 s, published 2026-11-13; web interface, interventions, Grafana, previously validated alerting evidence), source and PRs #21–#26, `artifacts/claude/*.xml` JUnit files, `artifacts/t11-real-5bd8899d…/evidence.json`, real GitHub Actions runs on PR #26 |
 | HISTORICAL | produced by an earlier validated session and not rerun since | T08–T10 measurements quoted in their validation documents, Codex's 507-case T11 ledger |
-| PLANNED | designed and documented, execution depends on an owner action | public deployment, production promotion with approval, rollback rehearsal, video recording |
+| PLANNED | designed and documented, execution depends on an owner action | permanent hosted deployment, production promotion with approval, rollback rehearsal, a video of a live On-Call agent recovery |
 | BLOCKED | cannot be produced from this machine or session | hosted smoke results, approval records, public URLs, main→development automatic run (no main merge, no hosting) |
 
-## GitHub publication state (2026-11-12)
+## GitHub publication state (2026-11-13)
+
+All feature PRs #16–#29 are integrated: `feature/t15-final-review` was merged into `main` by PR #30 (2026-11-13), and the public-demo boundary by PR #31. The `main-release` workflow ran on the merge and published an image digest; its development deployment job was skipped (not enabled). The table below records the per-task branches as published.
 
 | Task | Branch | Commit(s) | PR | Status |
 |---|---|---|---|---|
-| T11 | `feature/t11-oncall-agent` | `315b4491…` | [#25](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/25) → `feature/t10-alerting` | open, unmerged |
-| T12 | `feature/t12-ci-cd` | `04f3b497…`, `9e61a791…`, `51464b52…`, `07ea7b54…` | [#26](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/26) → `feature/t11-oncall-agent` | open, unmerged; real `pr-validation` runs: [43199314066](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43199314066) (lint, image, rules, PostgreSQL integration, Chromium passed; unit and security failed on a workflow env leak), [43200242540](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43200242540) (all seven jobs green after one Chromium failed-job rerun) |
-| T13 | `feature/t13-deployment` | `9f07bd5a…` | [#27](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/27) → `feature/t12-ci-cd` | open, unmerged; tooling only, no public deployment |
-| T14 | `feature/t14-evidence` | `7dfe09c2…` | [#28](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/28) → `feature/t13-deployment` | open, unmerged; documentation; no video |
-| T15 | `feature/t15-final-review` | see PR | → `feature/t14-evidence` | final review documents, edge-config correction |
+| T11 | `feature/t11-oncall-agent` | `315b4491…` | [#25](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/25) → `feature/t10-alerting` | integrated into `main` via #30 |
+| T12 | `feature/t12-ci-cd` | `04f3b497…`, `9e61a791…`, `51464b52…`, `07ea7b54…` | [#26](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/26) → `feature/t11-oncall-agent` | integrated into `main` via #30; real `pr-validation` runs: [43199314066](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43199314066) (lint, image, rules, PostgreSQL integration, Chromium passed; unit and security failed on a workflow env leak), [43200242540](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43200242540) (all seven jobs green after one Chromium failed-job rerun) |
+| T13 | `feature/t13-deployment` | `9f07bd5a…` | [#27](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/27) → `feature/t12-ci-cd` | integrated into `main` via #30; tooling only, no public deployment |
+| T14 | `feature/t14-evidence` | `7dfe09c2…` | [#28](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/28) → `feature/t13-deployment` | merged to `main` via #30; documentation; demo video published separately as release v1.0.0-demo |
+| T15 | `feature/t15-final-review` | `54e06ff0…` | [#29](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/29) → `feature/t14-evidence` | merged into `main` directly via [#30](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/30) (2026-11-13); final review documents, edge-config correction, release readiness |
+| Public demo | `feature/public-demo-tunnel` | `1aec0e7e…` | [#31](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/31) → `main` | merged (2026-11-13); access-gated public-demo boundary |
 
-Issues #11 and #12 carry progress comments; no Issue is closed; no PR is merged.
+Issues #11–#15 carry progress comments and remain open (closure needs the owner's decision). PRs #30 and #31 are merged into `main`; the stacked PRs #16–#29 are integrated through #30.
 
 ## Not available (stated plainly)
 
-- No video recording. The storyboard in the demo script is a plan.
-- No public URL, hosted deployment, GitHub Actions run, production approval record or remote rollback.
+- No video of a live On-Call agent recovery or of a new live alert. The published [demo video](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) covers the web interface, interventions, Grafana monitoring and previously validated alerting test evidence; the live agent evidence is the recorded T11 real-model run (`artifacts/t11-real-5bd8899d…/evidence.json`, quoted in [T11 audit](t11-audit.md)).
+- No permanent hosted deployment, automatic development deployment, production approval record or remote rollback. GitHub Actions CI runs do exist, and the only public URL is the temporary Quick Tunnel.
 - No cloud model provider; the real model is the owner's local llama3.2:3b. Model output quality on counterfactuals is weak and documented.
 - Five worker-stop lifecycle cases and one database-deletion assertion remain unexecuted under the data-preservation constraint, as in T09–T11.

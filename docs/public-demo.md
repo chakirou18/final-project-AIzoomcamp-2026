@@ -1,6 +1,6 @@
 # Temporary public demo through Cloudflare Tunnel
 
-This publishes the FieldOps synthetic intervention journey over HTTPS for a reviewer, for a limited time, from the owner's Windows machine. It does not replace the hosted deployment in T13. **The tunnel must not be started until the owner approves exposure.** As of 2026-11-13 it has never been started.
+This publishes the FieldOps synthetic intervention journey over HTTPS for a reviewer, for a limited time, from the owner's Windows machine. It does not replace the hosted deployment in T13. **Status (2026-11-13): the owner approved exposure and opened a Quick Tunnel at [https://assume-vbulletin-charming-fallen.trycloudflare.com](https://assume-vbulletin-charming-fallen.trycloudflare.com).** It is a temporary tunnel from the owner's machine: it is available only while that machine and the `cloudflared` process run, the URL changes if the tunnel is restarted, and there is no uptime guarantee. The access code is shared privately and never published.
 
 ## What is public and what is not
 
@@ -83,7 +83,17 @@ docker compose --env-file deploy/environments/public-demo.env.example -f docker-
 
 `stop` keeps the demo volumes. Remove them only deliberately. Deleting the demo's own volumes with `down -v` affects only `fieldops-public-demo_*`, but it is still a destructive step that needs owner approval.
 
-## Verification evidence (2026-11-13, local, tunnel not started)
+## Verification through the public URL (2026-11-13, after the tunnel was opened)
+
+| Check | Result |
+|---|---|
+| `GET /health/live`, `GET /health/ready` without a code | 200 |
+| `GET /app/login` and `GET /metrics` without a code | 401 with `WWW-Authenticate: Basic`, HSTS and `X-Frame-Options: DENY` |
+| `scripts/smoke/public_demo_check.py --base-url https://assume-vbulletin-charming-fallen.trycloudflare.com` (code read from the container, never printed) | **37/37 passed** through Cloudflare: 401 without or with a wrong code, 404 on 13 private surfaces, operator refused, Secure/HttpOnly/SameSite cookie, CSRF 403, role denials, create → assign → inbox delivery → start → complete → history, logout revocation |
+
+The check created one marked synthetic intervention in the isolated demo database.
+
+## Verification evidence (2026-11-13, local, before the tunnel was opened)
 
 | Check | Result |
 |---|---|

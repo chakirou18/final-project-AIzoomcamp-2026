@@ -1,6 +1,6 @@
 # T14 demonstration and evidence package: local validation
 
-Task is [Issue #14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14). Its dependency T13 is **not accepted** (no hosting), so T14 can only deliver the reproducible walkthrough, the recorded local incident evidence, the requirement-to-evidence mapping and the submission checklist. **No video was recorded.** CI/deploy links do not exist and are not claimed.
+Task is [Issue #14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14). Its dependency T13 is **not accepted** (no hosting), so T14 can only deliver the reproducible walkthrough, the recorded local incident evidence, the requirement-to-evidence mapping and the submission checklist. A demo video is published (release v1.0.0-demo; see the table below). CI links exist (GitHub Actions runs on PRs #26–#33 and on `main`); deployment links do not exist and are not claimed.
 
 ## Delivered
 
@@ -13,7 +13,7 @@ Task is [Issue #14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/
 | Test reports | JUnit files under `artifacts/` and `artifacts/claude/` | Listed in [t15-final-review.md](t15-final-review.md) |
 | CI/CD evidence | [t12-validation.md](t12-validation.md): actionlint, isolation, gate tests, real `pr-validation` runs on PR #26 | PR checks ACTUAL; deployment runs BLOCKED |
 | Deployment and rollback evidence | [t13-validation.md](t13-validation.md): dry runs | Local only; remote BLOCKED |
-| Video storyboard and narration | demo-script.md sections 5–6 (timestamped script, pre-recording checklist, secret-hygiene rules, post-recording steps) | Plan only; **no recording** (owner action) |
+| Video storyboard and narration | demo-script.md sections 5–6 (timestamped script, pre-recording checklist, secret-hygiene rules, post-recording steps) | **Published 2026-11-13:** [release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo), 1 min 33 s, covering the FieldOps web interface, intervention creation and tracking, the Grafana monitoring dashboards, and previously validated delayed-notification alerting test evidence. No live On-Call agent run or new live alert in the video. |
 | Requirement-to-evidence mapping (F01–F10, N01–N07) | [evidence-index.md](evidence-index.md) | Complete; blocked items stated |
 | Rubric status | [rubric-evidence.md](rubric-evidence.md) retained; 24-point mapping preserved, 41-point alternative kept separate | Unchanged |
 | Submission checklist | [final-release-checklist.md](final-release-checklist.md) | Written |
@@ -29,4 +29,4 @@ Task is [Issue #14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/
 
 ## Acceptance
 
-Issue #14 acceptance requires a successful full incident recording and current rubric status (both delivered locally) and a short video with CI/deploy links (**not delivered**). Verdict: **NO-GO for Issue #14 closure**, deliverables ready for the owner to record the video once T13 hosting exists or, if the owner accepts a local-only submission, to record the local walkthrough from the demo script.
+Issue #14 acceptance requires a successful full incident recording and current rubric status (both delivered locally) and a short video with CI/deploy links. **Update 2026-11-13:** the short video is published ([release v1.0.0-demo](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo)). It shows the web interface, intervention tracking, Grafana monitoring and previously validated alerting evidence. It does not include a live agent recovery, CI run links or deployment links. Verdict: **CONDITIONAL** — video and evidence package delivered; Issue #14 stays open for the owner to decide whether this scope satisfies the incident-recording requirement, and for the CI/deploy links that depend on T13 hosting.

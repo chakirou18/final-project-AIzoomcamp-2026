@@ -1,6 +1,6 @@
 # T15 final independent review
 
-Task is [Issue #15](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/15). This review covers the published feature chain T11–T14 (PRs #25–#28) and this T15 branch as of 2026-11-12. The dependency chain is incomplete by external constraints (no hosting, no production approval record, no video), so this is a conditional review: every missing item is named and nothing historical is presented as freshly rerun.
+Task is [Issue #15](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/15). This review covers the published feature chain T11–T14 (PRs #25–#28) and this T15 branch as of 2026-11-12. The dependency chain is incomplete by external constraints (no hosting and no production approval record; a demo video was later published on 2026-11-13 as release v1.0.0-demo), so this is a conditional review: every missing item is named and nothing historical is presented as freshly rerun.
 
 ## Test ledger
 
@@ -68,7 +68,7 @@ No critical or high defect is open; the high-severity deployment defect above is
 | T14 | `feature/t14-evidence` | `7dfe09c` | [#28](https://github.com/chakirou18/final-project-AIzoomcamp-2026/pull/28) → T13 | all 7 jobs pass ([43262890336](https://github.com/chakirou18/final-project-AIzoomcamp-2026/actions/runs/43262890336)) |
 | T15 | `feature/t15-final-review` | this branch | → T14 | runs on this PR |
 
-All PRs open and unmerged; Issues #11–#15 open; no deployment.
+Update 2026-11-13: `feature/t15-final-review` was merged into `main` by the owner (PR #30), followed by the public-demo boundary (PR #31). Issues #11–#15 remain open. No hosted deployment exists.
 
 ## Security scan of the release set
 
@@ -88,8 +88,8 @@ All PRs open and unmerged; Issues #11–#15 open; no deployment.
 
 ## Remaining risks and blocked evidence
 
-Remote: automatic main→development deployment, production approval gate with a real reviewer, promotion of an identical digest, production smoke, backup verification and rollback rehearsal, public HTTPS journey and exposure scan, video recording. Local: Docker-backed suites were not rerun on 2026-11-12 (engine stopped); the Chromium suite shows runner-side flakiness in one mobile JS-disabled case.
+Remote: automatic main→development deployment, production approval gate with a real reviewer, promotion of an identical digest, production smoke, backup verification and rollback rehearsal, permanent public HTTPS hosting and exposure scan (a temporary Quick Tunnel demo passed 37/37 checks on 2026-11-13), a video of a live agent recovery (a 1 min 33 s demo video is published as release v1.0.0-demo). Local: Docker-backed suites were not rerun on 2026-11-12 (engine stopped); the Chromium suite shows runner-side flakiness in one mobile JS-disabled case.
 
 ## Verdict
 
-**CONDITIONAL GO.** The application, agent and pipeline are locally complete and audited; the PR validation gate demonstrably executes on GitHub. Exact missing requirements for GO: (1) branch protection on `main` and the `development`/`production` environments with required reviewers, (2) approved hosting with DNS/TLS and deployment secrets, (3) one real main→development automatic run, one production promotion with approval record, smoke results in both environments and one rollback rehearsal, (4) a recorded demonstration video. Until then the project status is **LOCALLY COMPLETE — EXTERNAL ACCEPTANCE PENDING**.
+**CONDITIONAL GO.** The application, agent and pipeline are locally complete and audited; the PR validation gate demonstrably executes on GitHub. Exact missing requirements for GO: (1) branch protection on `main` and the `development`/`production` environments with required reviewers, (2) approved hosting with DNS/TLS and deployment secrets, (3) one real main→development automatic run, one production promotion with approval record, smoke results in both environments and one rollback rehearsal, (4) a demonstration video — **now published** as release v1.0.0-demo (2026-11-13), covering the web interface, interventions, Grafana and previously validated alerting evidence, without a live agent run. Until then the project status is **LOCALLY COMPLETE — EXTERNAL ACCEPTANCE PENDING**.

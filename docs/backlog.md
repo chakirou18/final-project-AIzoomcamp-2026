@@ -41,9 +41,9 @@ Verified 2026-11-09: 15 unique OPEN Issues in the public repository, with exact 
 | T09 | [#9](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/9) | OPEN - recovery/validation passed (438 distinct tests, 13/13 observability); T09 publication authorized, owner review pending |
 | T10 | [#10](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/10) | OPEN — implemented locally, owner review pending |
 | T11 | [#11](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/11) | OPEN - independently audited locally; real-model acceptance PASSED (local Ollama); publication awaits owner review |
-| T12 | [#12](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/12) | OPEN — workflows, gates and scripts implemented and verified locally; remote CI/CD acceptance blocked (no push/hosting authorized) |
+| T12 | [#12](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/12) | OPEN — workflows merged into `main`; CI runs automatically on PRs and `main`, and `main-release` published an image digest; automatic deployment and the production gate are blocked (no hosting, environments or branch protection) |
 | T13 | [#13](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/13) | OPEN — deployment tooling, HTTPS edge and rollback/backup/exposure/capacity scripts implemented and dry-run locally; public deployment and remote acceptance blocked (no approved hosting) |
-| T14 | [#14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14) | OPEN — walkthrough, evidence index, rubric mapping and submission guide written; video not recorded |
+| T14 | [#14](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/14) | OPEN — walkthrough, evidence index, rubric mapping and submission guide written; demo video published (release v1.0.0-demo) |
 | T15 | [#15](https://github.com/chakirou18/final-project-AIzoomcamp-2026/issues/15) | OPEN — final independent review written; CONDITIONAL GO pending external acceptance |
 
 ## Implementation plan
