@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     telemetry_enabled: bool = False
     otlp_endpoint: str = "http://otel-collector:4318/v1/traces"
     log_directory: Path | None = None
+    public_demo: bool = False
+    public_demo_access_code: SecretStr | None = None
+    public_demo_access_code_file: Path | None = None
+    public_demo_requests_per_minute: int = Field(default=120, ge=10, le=1200)
 
     @model_validator(mode="after")
     def validate_control_credentials(self) -> "Settings":
@@ -64,6 +68,30 @@ class Settings(BaseSettings):
             for value in [self.operator_secret, self.recovery_secret]
         ):
             raise ValueError("On-call credential must be distinct")
+        return self
+
+    @model_validator(mode="after")
+    def validate_public_demo(self) -> "Settings":
+        if self.public_demo_access_code_file is not None:
+            if self.public_demo_access_code is not None:
+                raise ValueError("Configure one public demo access code source")
+            try:
+                code = self.public_demo_access_code_file.read_text(encoding="utf-8").strip()
+            except OSError:
+                raise ValueError("Public demo access code file is not readable") from None
+            self.public_demo_access_code = SecretStr(code)
+        if not self.public_demo:
+            return self
+        # Fail closed: the public boundary must never run with local-only or privileged features.
+        if self.environment == "local":
+            raise ValueError("Public demo requires a non-local environment")
+        if not self.demo_mode:
+            raise ValueError("Public demo requires synthetic demo personas")
+        code = self.public_demo_access_code
+        if code is None or len(code.get_secret_value()) < 20:
+            raise ValueError("Public demo requires an access code of at least 20 characters")
+        if self.operator_secret or self.recovery_secret or self.oncall_secret:
+            raise ValueError("Public demo must not load operator, recovery or agent credentials")
         return self
 
     def signing_key(self) -> bytes:
