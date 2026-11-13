@@ -70,7 +70,9 @@ Latest fresh ledger and counts: [T15 final review](t15-final-review.md).
 
 ## Demo video
 
-**Not recorded.** The timestamped script, recording checklist and secret-hygiene steps are in [demo-script.md](demo-script.md) sections 5–6.
+**Published:** [FieldOps v1.0 — Demo & Monitoring](https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo) (GitHub release `v1.0.0-demo`, MP4 asset, 1 min 33 s, 2026-11-13).
+
+It shows the FieldOps web interface, intervention creation and tracking, the Grafana monitoring dashboards, and previously validated delayed-notification alerting test evidence. It does not show a live On-Call agent run or a new live alert. For that, see the recorded T11 real-model incident in [T11 audit](t11-audit.md) and the walkthrough in [demo-script.md](demo-script.md) section 3.
 
 ## Known limitations
 
@@ -79,6 +81,7 @@ Local hosting only; the 3B model is advisory and unreliable on counterfactuals (
 ## Links for submission
 
 - Repository: https://github.com/chakirou18/final-project-AIzoomcamp-2026
+- Demo video: https://github.com/chakirou18/final-project-AIzoomcamp-2026/releases/tag/v1.0.0-demo
 - Pull requests: #21–#26 (feature chain T07→T12), see [evidence index](evidence-index.md)
 - Issues: #1–#15 public tracker
 - Evidence index and rubric mapping: [evidence-index.md](evidence-index.md)
