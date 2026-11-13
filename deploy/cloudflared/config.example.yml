@@ -1,0 +1,13 @@
+# Named Cloudflare Tunnel for the temporary FieldOps public demo (docs/public-demo.md).
+# Replace the placeholders locally; never commit the credentials JSON.
+tunnel: REPLACE_WITH_TUNNEL_ID
+credentials-file: C:\Users\<user>\.cloudflared\REPLACE_WITH_TUNNEL_ID.json
+no-autoupdate: true
+ingress:
+  - hostname: demo.example.invalid
+    service: http://127.0.0.1:18400
+    originRequest:
+      connectTimeout: 10s
+      noTLSVerify: false
+  # Anything else that reaches this tunnel is refused.
+  - service: http_status:404

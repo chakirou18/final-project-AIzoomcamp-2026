@@ -225,7 +225,7 @@ The hosting kit includes:
 - a private model runtime on an internal network;
 - release, backup-verification, exposure and capacity scripts.
 
-The full target is development and production side by side plus the model. It needs about 8 GB RAM and 4 vCPU, so it does not fit a €5/month server; the costed proposal is in [T13 hosting proposal](docs/t13-hosting-proposal.md). **No public URL exists yet.** See [T13 deployment](docs/t13-deployment.md) and [T13 rollback](docs/t13-rollback.md).
+The full target is development and production side by side plus the model. It needs about 8 GB RAM and 4 vCPU, so it does not fit a €5/month server; the costed proposal is in [T13 hosting proposal](docs/t13-hosting-proposal.md). **No public URL exists yet.** A temporary, access-code-protected public demo through Cloudflare Tunnel is prepared in [Public demo](docs/public-demo.md); it starts only after owner approval. See [T13 deployment](docs/t13-deployment.md) and [T13 rollback](docs/t13-rollback.md).
 
 ## Security
 

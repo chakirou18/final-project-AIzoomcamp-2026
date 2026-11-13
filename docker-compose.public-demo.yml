@@ -1,0 +1,91 @@
+# Temporary public demonstration through Cloudflare Tunnel. Separate Compose project with its
+# own PostgreSQL volume, credentials and network; no observability, agent or model services.
+#
+#   docker compose --env-file deploy/environments/public-demo.env.example \
+#     -f docker-compose.yml -f docker-compose.public-demo.yml up --build --wait
+#
+# Only the web port is published, on loopback, for the local cloudflared connector. The web
+# service runs with FIELDOPS_PUBLIC_DEMO=true (access-code gate, private paths hidden, rate
+# limits, security headers) and without operator, recovery or agent credentials, so operator
+# login, worker controls and recovery endpoints are unavailable. See docs/public-demo.md.
+
+x-public-image: &public-image
+  image: fieldops-local:public-demo
+
+services:
+  credentials:
+    <<: *public-image
+  public-demo-credentials:
+    <<: *public-image
+    user: "0:0"
+    command:
+      - python
+      - -c
+      - >-
+        import os, pathlib;
+        from fieldops.bootstrap import initialize_credentials;
+        d = pathlib.Path('/run/fieldops-public');
+        initialize_credentials(d, 'access_code');
+        os.chown(d / 'access_code', 10001, 10001);
+        os.chmod(d / 'access_code', 0o400)
+    environment: {}
+    volumes: !override
+      - public_demo_access:/run/fieldops-public
+    restart: "no"
+  bootstrap:
+    <<: *public-image
+    # Non-local environments never auto-seed; seed the synthetic personas explicitly.
+    command:
+      - sh
+      - -c
+      - python -m fieldops.bootstrap migrate && python -m fieldops.bootstrap seed --allow-nonlocal
+  web:
+    <<: *public-image
+    environment: !override
+      FIELDOPS_DB_HOST: db
+      FIELDOPS_DB_PORT: "5432"
+      FIELDOPS_DB_NAME: ${POSTGRES_DB:?}
+      FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
+      FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+      FIELDOPS_SESSION_SECRET_FILE: /run/fieldops/session_key
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+      FIELDOPS_DEMO_MODE: "true"
+      FIELDOPS_TELEMETRY_ENABLED: "false"
+      FIELDOPS_PUBLIC_DEMO: "true"
+      FIELDOPS_PUBLIC_DEMO_ACCESS_CODE_FILE: /run/fieldops-public/access_code
+      FIELDOPS_PUBLIC_DEMO_REQUESTS_PER_MINUTE: ${FIELDOPS_PUBLIC_DEMO_REQUESTS_PER_MINUTE:-120}
+    volumes: !override
+      - db_credentials:/run/fieldops:ro
+      - public_demo_access:/run/fieldops-public:ro
+    ports: !override
+      - "127.0.0.1:${FIELDOPS_PUBLIC_DEMO_PORT:?}:8000"
+    depends_on:
+      public-demo-credentials:
+        condition: service_completed_successfully
+    mem_limit: 512m
+    read_only: true
+    tmpfs: [/tmp:size=16m]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  worker:
+    <<: *public-image
+    environment: !override
+      FIELDOPS_DB_HOST: db
+      FIELDOPS_DB_PORT: "5432"
+      FIELDOPS_DB_NAME: ${POSTGRES_DB:?}
+      FIELDOPS_DB_USER: ${POSTGRES_USER:-fieldops}
+      FIELDOPS_DB_PASSWORD_FILE: /run/fieldops/db_password
+      FIELDOPS_ENVIRONMENT: ${FIELDOPS_ENVIRONMENT:?}
+      FIELDOPS_TELEMETRY_ENABLED: "false"
+    volumes: !override
+      - db_credentials:/run/fieldops:ro
+    mem_limit: 256m
+    read_only: true
+    tmpfs: [/tmp:size=16m]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  db:
+    mem_limit: 512m
+
+volumes:
+  public_demo_access:

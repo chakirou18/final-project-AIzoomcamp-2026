@@ -21,6 +21,7 @@ from fieldops.logging import configure_logging
 from fieldops.metrics import Metrics
 from fieldops.oncall.web_tools import router as oncall_router
 from fieldops.policy import DomainError
+from fieldops.public_demo import PublicDemoMiddleware
 from fieldops.routes.controls import router as control_router
 from fieldops.routes.interventions import router as intervention_router
 from fieldops.routes.notifications import router as notification_router
@@ -67,6 +68,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
         responses={500: {"model": ErrorResponse}},
+    )
+    # Outermost boundary for the opt-in public demonstration; a no-op unless enabled.
+    app.add_middleware(
+        PublicDemoMiddleware, settings_provider=lambda: getattr(app.state, "settings", None)
     )
     app.include_router(auth_router)
     app.include_router(intervention_router)
